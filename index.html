@@ -1,23 +1,27 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MÉTRICA | Responsive Glass Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    }
+  </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700;800&family=Inter:wght@400;600;700;800&display=swap');
 
     :root {
       --brand-magenta: #B30046;
-      --brand-navy: #0F172A;
-      --paper-bg: #DCD6C8;
+      --paper-bg-light: #DCD6C8;
+      --paper-bg-dark: #0B0F17;
     }
 
     body {
       font-family: 'Inter', sans-serif;
-      background-color: var(--paper-bg);
-      color: #0f172a;
+      transition: background-color 0.4s ease, color 0.4s ease;
       min-height: 100vh;
       overflow-x: hidden;
       position: relative;
@@ -25,64 +29,71 @@
 
     .font-brand { font-family: 'Space Grotesk', sans-serif; }
 
-    /* UNIFORMIDAD DE CRISTAL TRASLÚCIDO CON ORBES */
-    .bg-grid {
+    /* --- ESTILOS MODO DÍA (LIGHT) --- */
+    body.light-theme {
+      background-color: var(--paper-bg-light);
+      color: #0f172a;
+    }
+    body.light-theme .bg-grid {
       background-image: radial-gradient(rgba(15, 23, 42, 0.15) 1px, transparent 1px);
       background-size: 20px 20px;
     }
-
-    .orb {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(55px);
-      z-index: 0;
-      pointer-events: none;
-      opacity: 0.65;
-    }
-    .orb-1 { top: -50px; left: -50px; width: 300px; height: 300px; background: #B30046; }
-    .orb-2 { top: 35%; right: -80px; width: 340px; height: 340px; background: #0F172A; }
-    .orb-3 { bottom: 5%; left: 20%; width: 280px; height: 280px; background: #B30046; }
-
-    .glass-card {
-      position: relative;
-      z-index: 10;
+    body.light-theme .glass-card {
       background: rgba(255, 255, 255, 0.45) !important;
       backdrop-filter: blur(16px) saturate(180%) !important;
       -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
       border: 1px solid rgba(255, 255, 255, 0.8) !important;
-      box-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.08), inset 0 1px 1px 0 rgba(255, 255, 255, 0.9);
-      border-radius: 1rem;
+      box-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.08);
     }
-
-    .glass-card-dark {
-      position: relative;
-      z-index: 10;
-      background: rgba(15, 23, 42, 0.85) !important;
-      backdrop-filter: blur(16px) !important;
-      -webkit-backdrop-filter: blur(16px) !important;
-      border: 1px solid rgba(255, 255, 255, 0.15) !important;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-      border-radius: 1rem;
-      color: #ffffff;
-    }
-
-    .glass-input {
+    body.light-theme .glass-input {
       background: rgba(255, 255, 255, 0.6);
       border: 1px solid rgba(15, 23, 42, 0.15);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border-radius: 0.5rem;
-      padding: 0.5rem 0.75rem;
-      outline: none;
-      font-weight: 700;
       color: #0f172a;
-      transition: all 0.2s ease;
     }
 
-    .glass-input:focus {
-      border-color: #B30046;
-      background: rgba(255, 255, 255, 0.9);
-      box-shadow: 0 0 10px rgba(179, 0, 70, 0.15);
+    /* --- ESTILOS MODO NOCHE (DARK) --- */
+    body.dark-theme {
+      background-color: var(--paper-bg-dark);
+      color: #f8fafc;
+    }
+    body.dark-theme .bg-grid {
+      background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    body.dark-theme .glass-card {
+      background: rgba(15, 23, 42, 0.65) !important;
+      backdrop-filter: blur(16px) saturate(180%) !important;
+      -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+    body.dark-theme .glass-input {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #f8fafc;
+    }
+
+    /* ORBES FLOTANTES DE LUZ TRASLÚCIDA */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(60px);
+      z-index: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+    .orb-1 { top: -50px; left: -50px; width: 320px; height: 320px; background: #B30046; opacity: 0.5; }
+    .orb-2 { top: 35%; right: -80px; width: 350px; height: 350px; background: #0F172A; opacity: 0.6; }
+    .orb-3 { bottom: 5%; left: 20%; width: 300px; height: 300px; background: #B30046; opacity: 0.4; }
+
+    body.dark-theme .orb-2 { background: #38bdf8; opacity: 0.25; }
+
+    .glass-card-dark {
+      background: rgba(15, 23, 42, 0.85) !important;
+      backdrop-filter: blur(16px) !important;
+      border: 1px solid rgba(255, 255, 255, 0.15) !important;
+      border-radius: 1rem;
+      color: #ffffff;
     }
 
     .btn-magenta {
@@ -92,85 +103,91 @@
       border-radius: 0.5rem;
       transition: all 0.2s ease;
     }
-
     .btn-magenta:hover {
       background: #800032;
-      box-shadow: 0 4px 12px rgba(179, 0, 70, 0.3);
+      box-shadow: 0 4px 12px rgba(179, 0, 70, 0.4);
     }
 
     .brand-magenta { color: #B30046; }
-    .bg-brand-magenta { background-color: #B30046; }
   </style>
 </head>
-<body class="bg-grid p-3 md:p-6 lg:p-8 max-w-7xl mx-auto min-h-screen flex flex-col gap-4 md:gap-6">
+<body id="bodyTag" class="dark-theme bg-grid p-3 md:p-6 lg:p-8 max-w-7xl mx-auto min-h-screen flex flex-col gap-4 md:gap-6">
 
+  <!-- LUZ DE FONDO -->
   <div class="orb orb-1"></div>
   <div class="orb orb-2"></div>
   <div class="orb orb-3"></div>
 
   <!-- ENCABEZADO SIMPLIFICADO -->
-  <header class="glass-card px-4 py-3 md:px-6 md:py-4 flex items-center justify-between">
+  <header class="glass-card rounded-2xl px-4 py-3 md:px-6 md:py-4 flex items-center justify-between">
     <div class="flex items-center space-x-3">
-      <div class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-slate-900 flex items-center justify-center text-white font-black font-brand text-base shadow-sm">
+      <div class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-slate-900 dark:bg-white dark:text-slate-900 flex items-center justify-center text-white font-black font-brand text-base shadow-sm">
         M
       </div>
       <div>
-        <h1 class="text-lg md:text-xl font-brand font-extrabold tracking-tight text-slate-900 leading-none">
+        <h1 class="text-lg md:text-xl font-brand font-extrabold tracking-tight leading-none">
           MÉTRICA
         </h1>
         <span class="text-[9px] md:text-[10px] font-bold tracking-wider brand-magenta uppercase">Estudio R&P</span>
       </div>
     </div>
 
-    <div class="flex items-center space-x-4 md:space-x-6">
+    <div class="flex items-center space-x-3 md:space-x-6">
+      <!-- CONMUTADOR MODO NOCHE / DÍA -->
+      <button onclick="toggleTheme()" class="p-2 rounded-xl glass-card text-xs font-bold flex items-center gap-1.5 hover:scale-105 transition-transform" title="Cambiar Tema">
+        <span id="themeIcon">🌙</span>
+        <span id="themeText" class="hidden sm:inline text-[10px] uppercase font-bold">Noche</span>
+      </button>
+
       <div class="hidden sm:flex items-center space-x-2">
         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Terminal Activa</span>
+        <span class="text-xs font-bold uppercase tracking-wider opacity-75">Terminal Activa</span>
       </div>
-      <!-- PnL DINÁMICO E INICIALIZADO EN -$100.00 -->
-      <div class="text-right border-l border-slate-900/15 pl-4 md:pl-6">
-        <span class="block text-[9px] font-bold uppercase text-slate-500">PnL Sesión</span>
-        <strong id="sessionPnL" class="text-sm md:text-base font-black text-rose-700">-$100.00</strong>
+
+      <!-- PnL DINÁMICO CORREGIDO (INICIA EN $0.00) -->
+      <div class="text-right border-l border-slate-500/20 pl-4 md:pl-6">
+        <span class="block text-[9px] font-bold uppercase opacity-60">PnL Sesión</span>
+        <strong id="sessionPnL" class="text-sm md:text-base font-black text-slate-400">$0.00</strong>
       </div>
     </div>
   </header>
 
   <!-- CONTENEDOR PRINCIPAL ADAPTATIVO -->
-  <main class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 items-start">
+  <main class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 items-start z-10">
     
     <!-- COLUMNA IZQUIERDA/CENTRAL: GRÁFICO + REGISTRO DE ÓRDENES -->
     <div class="flex flex-col gap-4 md:gap-6 lg:col-span-2">
       
       <!-- SECCIÓN GRÁFICO -->
-      <section class="glass-card p-4 flex flex-col h-[400px] md:h-[480px]">
-        <div class="flex justify-between items-center border-b border-slate-900/10 pb-3 mb-3">
+      <section class="glass-card rounded-2xl p-4 flex flex-col h-[400px] md:h-[480px]">
+        <div class="flex justify-between items-center border-b border-slate-500/15 pb-3 mb-3">
           <div class="flex space-x-2">
-            <button onclick="switchChart('BTCUSDT')" id="tab-btc" class="px-3 py-1 text-xs font-bold rounded-md bg-slate-900 text-white shadow">
+            <button onclick="switchChart('BTCUSDT')" id="tab-btc" class="px-3 py-1 text-xs font-bold rounded-md bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow">
               BTC/USDT
             </button>
-            <button onclick="switchChart('SOLUSDT')" id="tab-sol" class="px-3 py-1 text-xs font-bold rounded-md bg-white/40 text-slate-700 hover:bg-white/80">
+            <button onclick="switchChart('SOLUSDT')" id="tab-sol" class="px-3 py-1 text-xs font-bold rounded-md bg-white/20 dark:bg-slate-800/50 hover:bg-white/40">
               SOL/USDT
             </button>
           </div>
           <span class="text-[10px] font-bold brand-magenta uppercase tracking-wider">15M Chart</span>
         </div>
 
-        <div id="tv-chart-container" class="w-full flex-grow rounded-lg overflow-hidden border border-slate-900/10"></div>
+        <div id="tv-chart-container" class="w-full flex-grow rounded-xl overflow-hidden border border-slate-500/15"></div>
       </section>
 
-      <!-- REGISTRO DE ÓRDENES CON CERRADO DE POSICIONES -->
-      <section class="glass-card p-4">
-        <div class="flex justify-between items-center border-b border-slate-900/10 pb-2 mb-3">
-          <h3 class="text-sm font-brand font-bold text-slate-900">
+      <!-- REGISTRO DE ÓRDENES CON CERRADO Y BORRADO -->
+      <section class="glass-card rounded-2xl p-4">
+        <div class="flex justify-between items-center border-b border-slate-500/15 pb-2 mb-3">
+          <h3 class="text-sm font-brand font-bold">
             REGISTRO DE <span class="brand-magenta">ÓRDENES</span>
           </h3>
-          <span id="orderCount" class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900 text-white">0 Activas</span>
+          <span id="orderCount" class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900 text-white dark:bg-white dark:text-slate-900">0 Activas</span>
         </div>
 
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs">
             <thead>
-              <tr class="border-b border-slate-900/10 text-[9px] uppercase font-bold text-slate-500">
+              <tr class="border-b border-slate-500/15 text-[9px] uppercase font-bold opacity-60">
                 <th class="pb-2">Par</th>
                 <th class="pb-2">Tipo</th>
                 <th class="pb-2">Entrada</th>
@@ -179,9 +196,9 @@
                 <th class="pb-2 text-center">Estado / Acción</th>
               </tr>
             </thead>
-            <tbody id="ordersTableBody" class="divide-y divide-slate-900/5 font-semibold text-slate-800">
+            <tbody id="ordersTableBody" class="divide-y divide-slate-500/10 font-semibold">
               <tr id="emptyOrdersRow">
-                <td colspan="6" class="py-4 text-center text-slate-500 text-[11px]">
+                <td colspan="6" class="py-4 text-center opacity-50 text-[11px]">
                   No hay órdenes registradas en esta sesión.
                 </td>
               </tr>
@@ -196,9 +213,9 @@
     <div class="flex flex-col gap-4 md:gap-6 lg:col-span-1">
       
       <!-- DIAGNÓSTICO -->
-      <section class="glass-card p-4">
-        <div class="flex justify-between items-center border-b border-slate-900/10 pb-2 mb-3">
-          <h3 class="text-sm font-brand font-bold text-slate-900">
+      <section class="glass-card rounded-2xl p-4">
+        <div class="flex justify-between items-center border-b border-slate-500/15 pb-2 mb-3">
+          <h3 class="text-sm font-brand font-bold">
             DIAGNÓSTICO <span class="brand-magenta">15M</span>
           </h3>
           <button onclick="fetchAndAnalyze()" class="btn-magenta px-3 py-1 text-xs flex items-center gap-1 shadow-sm">
@@ -207,19 +224,19 @@
         </div>
 
         <div class="grid grid-cols-2 gap-2 mb-3">
-          <div class="glass-card p-2 text-center border-none">
-            <span class="block text-[8px] font-bold uppercase text-slate-500">Precio</span>
-            <span id="mPrice" class="text-xs font-black text-slate-900">--</span>
+          <div class="glass-card rounded-xl p-2 text-center border-none">
+            <span class="block text-[8px] font-bold uppercase opacity-60">Precio</span>
+            <span id="mPrice" class="text-xs font-black">--</span>
           </div>
-          <div class="glass-card p-2 text-center border-none">
-            <span class="block text-[8px] font-bold uppercase text-slate-500">VWAP</span>
-            <span id="mVWAP" class="text-xs font-black text-slate-900">--</span>
+          <div class="glass-card rounded-xl p-2 text-center border-none">
+            <span class="block text-[8px] font-bold uppercase opacity-60">VWAP</span>
+            <span id="mVWAP" class="text-xs font-black">--</span>
           </div>
-          <div class="glass-card p-2 text-center border-none">
-            <span class="block text-[8px] font-bold uppercase text-slate-500">RSI (9)</span>
-            <span id="mRSI" class="text-xs font-black text-slate-900">--</span>
+          <div class="glass-card rounded-xl p-2 text-center border-none">
+            <span class="block text-[8px] font-bold uppercase opacity-60">RSI (9)</span>
+            <span id="mRSI" class="text-xs font-black">--</span>
           </div>
-          <div class="glass-card p-2 text-center border-none bg-rose-500/10">
+          <div class="glass-card rounded-xl p-2 text-center border-none bg-rose-500/10">
             <span class="block text-[8px] font-bold uppercase brand-magenta">Confluencia</span>
             <span id="mScore" class="text-xs font-black brand-magenta">0 / 5</span>
           </div>
@@ -238,18 +255,18 @@
       </section>
 
       <!-- CALCULADORA DE RIESGO -->
-      <section class="glass-card p-4">
-        <h3 class="text-sm font-brand font-bold text-slate-900 border-b border-slate-900/10 pb-2 mb-3">
+      <section class="glass-card rounded-2xl p-4">
+        <h3 class="text-sm font-brand font-bold border-b border-slate-500/15 pb-2 mb-3">
           GESTIÓN DE <span class="brand-magenta">RIESGO</span>
         </h3>
 
         <div class="grid grid-cols-2 gap-2 mb-3">
           <div>
-            <label class="block text-[8px] font-bold text-slate-500 uppercase mb-1">Capital ($)</label>
+            <label class="block text-[8px] font-bold opacity-60 uppercase mb-1">Capital ($)</label>
             <input id="cCapital" type="number" value="1000" class="glass-input w-full text-xs">
           </div>
           <div>
-            <label class="block text-[8px] font-bold text-slate-500 uppercase mb-1">Riesgo (%)</label>
+            <label class="block text-[8px] font-bold opacity-60 uppercase mb-1">Riesgo (%)</label>
             <select id="cRisk" class="glass-input w-full text-xs">
               <option value="1" selected>1%</option>
               <option value="2">2%</option>
@@ -257,23 +274,23 @@
             </select>
           </div>
           <div>
-            <label class="block text-[8px] font-bold text-slate-500 uppercase mb-1">Entrada ($)</label>
+            <label class="block text-[8px] font-bold opacity-60 uppercase mb-1">Entrada ($)</label>
             <input id="cEntry" type="number" step="any" placeholder="0.00" class="glass-input w-full text-xs">
           </div>
           <div>
-            <label class="block text-[8px] font-bold text-slate-500 uppercase mb-1">Stop Loss ($)</label>
+            <label class="block text-[8px] font-bold opacity-60 uppercase mb-1">Stop Loss ($)</label>
             <input id="cStop" type="number" step="any" placeholder="0.00" class="glass-input w-full text-xs">
           </div>
         </div>
 
-        <div class="glass-card p-3 bg-white/50 flex justify-between items-center text-center mb-3">
+        <div class="glass-card rounded-xl p-3 flex justify-between items-center text-center mb-3">
           <div>
-            <span class="block text-[8px] font-bold uppercase text-slate-500">Riesgo USD</span>
+            <span class="block text-[8px] font-bold uppercase opacity-60">Riesgo USD</span>
             <span id="resRisk" class="text-xs font-black brand-magenta">$0.00</span>
           </div>
           <div>
-            <span class="block text-[8px] font-bold uppercase text-slate-500">Tamaño Posición</span>
-            <span id="resPos" class="text-xs font-black text-slate-900">$0.00</span>
+            <span class="block text-[8px] font-bold uppercase opacity-60">Tamaño Posición</span>
+            <span id="resPos" class="text-xs font-black">$0.00</span>
           </div>
         </div>
 
@@ -285,25 +302,57 @@
     </div>
   </main>
 
-  <!-- SCRIPTS LOGICA GENERAL & LOGICA DE PnL -->
+  <!-- SCRIPTS -->
   <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
   <script>
     let currentSymbol = 'BTCUSDT';
+    let currentTheme = 'dark'; // 'dark' | 'light'
     let analysisData = null;
     let ordersList = [];
-    
-    // PnL inicializado en -100.00
-    let currentPnL = -100.00;
 
-    function updatePnLDisplay() {
-      const pnlElement = document.getElementById('sessionPnL');
-      const formatted = (currentPnL >= 0 ? "+$" : "-$") + Math.abs(currentPnL).toFixed(2);
-      pnlElement.innerText = formatted;
+    // TEMA NOCHE / DÍA Y RE-RENDER DE TRADINGVIEW
+    function toggleTheme() {
+      const body = document.getElementById('bodyTag');
+      const icon = document.getElementById('themeIcon');
+      const text = document.getElementById('themeText');
 
-      if (currentPnL >= 0) {
-        pnlElement.className = "text-sm md:text-base font-black text-emerald-600";
+      if (currentTheme === 'dark') {
+        currentTheme = 'light';
+        body.className = "light-theme bg-grid p-3 md:p-6 lg:p-8 max-w-7xl mx-auto min-h-screen flex flex-col gap-4 md:gap-6";
+        icon.innerText = "☀️";
+        text.innerText = "Día";
       } else {
-        pnlElement.className = "text-sm md:text-base font-black text-rose-700";
+        currentTheme = 'dark';
+        body.className = "dark-theme bg-grid p-3 md:p-6 lg:p-8 max-w-7xl mx-auto min-h-screen flex flex-col gap-4 md:gap-6";
+        icon.innerText = "🌙";
+        text.innerText = "Noche";
+      }
+
+      renderChart(currentSymbol);
+    }
+
+    // CÁLCULO RECURSIVO DEL PnL BASADO EN ÓRDENES CERRADAS
+    function calculateSessionPnL() {
+      let totalPnL = 0;
+      ordersList.forEach(o => {
+        if (o.status === 'WIN') {
+          totalPnL += (o.riskUSD * 2); // Take Profit 1:2
+        } else if (o.status === 'LOSS') {
+          totalPnL -= o.riskUSD; // Stop Loss 1:1
+        }
+      });
+
+      const pnlElement = document.getElementById('sessionPnL');
+      
+      if (totalPnL === 0) {
+        pnlElement.innerText = "$0.00";
+        pnlElement.className = "text-sm md:text-base font-black text-slate-400";
+      } else if (totalPnL > 0) {
+        pnlElement.innerText = `+$${totalPnL.toFixed(2)}`;
+        pnlElement.className = "text-sm md:text-base font-black text-emerald-500";
+      } else {
+        pnlElement.innerText = `-$${Math.abs(totalPnL).toFixed(2)}`;
+        pnlElement.className = "text-sm md:text-base font-black text-rose-500";
       }
     }
 
@@ -314,10 +363,10 @@
         "symbol": `BINANCE:${symbol}`,
         "interval": "15",
         "timezone": "Etc/UTC",
-        "theme": "light",
+        "theme": currentTheme === 'dark' ? "dark" : "light",
         "style": "1",
         "locale": "es",
-        "toolbar_bg": "rgba(220, 214, 200, 0)",
+        "toolbar_bg": "rgba(0,0,0,0)",
         "enable_publishing": false,
         "hide_top_toolbar": true,
         "hide_side_toolbar": true,
@@ -330,12 +379,15 @@
       const btcTab = document.getElementById('tab-btc');
       const solTab = document.getElementById('tab-sol');
 
+      const activeClass = "px-3 py-1 text-xs font-bold rounded-md bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow";
+      const inactiveClass = "px-3 py-1 text-xs font-bold rounded-md bg-white/20 dark:bg-slate-800/50 hover:bg-white/40";
+
       if (symbol === 'BTCUSDT') {
-        btcTab.className = "px-3 py-1 text-xs font-bold rounded-md bg-slate-900 text-white shadow";
-        solTab.className = "px-3 py-1 text-xs font-bold rounded-md bg-white/40 text-slate-700 hover:bg-white/80";
+        btcTab.className = activeClass;
+        solTab.className = inactiveClass;
       } else {
-        solTab.className = "px-3 py-1 text-xs font-bold rounded-md bg-slate-900 text-white shadow";
-        btcTab.className = "px-3 py-1 text-xs font-bold rounded-md bg-white/40 text-slate-700 hover:bg-white/80";
+        solTab.className = activeClass;
+        btcTab.className = inactiveClass;
       }
       renderChart(symbol);
     }
@@ -423,23 +475,18 @@
       updateOrdersTable();
     }
 
-    // CIERRE DE ORDEN (PROFIT O LOSS)
     function closeOrder(id, isWin) {
       const order = ordersList.find(o => o.id === id);
       if (!order || order.status !== 'OPEN') return;
 
-      if (isWin) {
-        // Ratio 1:2 por defecto en Take Profit (+ 2x Riesgo)
-        const profit = order.riskUSD * 2;
-        currentPnL += profit;
-        order.status = 'WIN';
-      } else {
-        // Pérdida del monto arriesgado
-        currentPnL -= order.riskUSD;
-        order.status = 'LOSS';
-      }
+      order.status = isWin ? 'WIN' : 'LOSS';
+      calculateSessionPnL();
+      updateOrdersTable();
+    }
 
-      updatePnLDisplay();
+    function deleteOrder(id) {
+      ordersList = ordersList.filter(o => o.id !== id);
+      calculateSessionPnL();
       updateOrdersTable();
     }
 
@@ -450,11 +497,11 @@
       if (ordersList.length === 0) {
         tbody.innerHTML = `
           <tr id="emptyOrdersRow">
-            <td colspan="6" class="py-4 text-center text-slate-500 text-[11px]">
+            <td colspan="6" class="py-4 text-center opacity-50 text-[11px]">
               No hay órdenes registradas en esta sesión.
             </td>
           </tr>`;
-        countBadge.innerText = `0 Registradas`;
+        countBadge.innerText = `0 Activas`;
         return;
       }
 
@@ -466,26 +513,37 @@
 
         if (o.status === 'OPEN') {
           actionCell = `
-            <div class="flex justify-center space-x-1">
+            <div class="flex justify-center items-center space-x-1">
               <button onclick="closeOrder(${o.id}, true)" class="px-2 py-0.5 text-[9px] font-black rounded bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm">
                 + TP
               </button>
-              <button onclick="closeOrder(${o.id}, false)" class="px-2 py-0.5 text-[9px] font-black rounded bg-rose-700 text-white hover:bg-rose-800 shadow-sm">
+              <button onclick="closeOrder(${o.id}, false)" class="px-2 py-0.5 text-[9px] font-black rounded bg-rose-600 text-white hover:bg-rose-700 shadow-sm">
                 - SL
+              </button>
+              <button onclick="deleteOrder(${o.id})" class="px-1.5 py-0.5 text-[10px] opacity-60 hover:opacity-100" title="Eliminar">
+                🗑️
               </button>
             </div>
           `;
         } else if (o.status === 'WIN') {
-          actionCell = `<span class="block text-center font-black text-emerald-600 text-[10px]">+$${(o.riskUSD * 2).toFixed(2)} (TP)</span>`;
+          actionCell = `
+            <div class="flex justify-center items-center space-x-2">
+              <span class="font-black text-emerald-500 text-[10px]">+$${(o.riskUSD * 2).toFixed(2)} (TP)</span>
+              <button onclick="deleteOrder(${o.id})" class="text-[10px] opacity-40 hover:opacity-100">🗑️</button>
+            </div>`;
         } else {
-          actionCell = `<span class="block text-center font-black text-rose-700 text-[10px]">-$${o.riskUSD.toFixed(2)} (SL)</span>`;
+          actionCell = `
+            <div class="flex justify-center items-center space-x-2">
+              <span class="font-black text-rose-500 text-[10px]">-$${o.riskUSD.toFixed(2)} (SL)</span>
+              <button onclick="deleteOrder(${o.id})" class="text-[10px] opacity-40 hover:opacity-100">🗑️</button>
+            </div>`;
         }
 
         return `
-          <tr class="hover:bg-white/30 transition-colors">
+          <tr class="hover:bg-white/10 transition-colors">
             <td class="py-2.5 font-bold">${o.symbol}</td>
             <td class="py-2.5">
-              <span class="px-1.5 py-0.5 text-[9px] font-black rounded ${o.type === 'LONG' ? 'bg-emerald-500/20 text-emerald-800' : 'bg-rose-500/20 text-rose-800'}">
+              <span class="px-1.5 py-0.5 text-[9px] font-black rounded ${o.type === 'LONG' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">
                 ${o.type}
               </span>
             </td>
@@ -503,7 +561,7 @@
     });
 
     // Carga inicial
-    updatePnLDisplay();
+    calculateSessionPnL();
     renderChart('BTCUSDT');
   </script>
 </body>
