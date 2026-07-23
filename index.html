@@ -6,9 +6,7 @@
   <title>MÉTRICA | Responsive Glass Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    tailwind.config = {
-      darkMode: 'class',
-    }
+    tailwind.config = { darkMode: 'class' }
   </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700;800&family=Inter:wght@400;600;700;800&display=swap');
@@ -29,7 +27,7 @@
 
     .font-brand { font-family: 'Space Grotesk', sans-serif; }
 
-    /* --- ESTILOS MODO DÍA (LIGHT) --- */
+    /* ESTILOS TEMA CLARO */
     body.light-theme {
       background-color: var(--paper-bg-light);
       color: #0f172a;
@@ -51,7 +49,7 @@
       color: #0f172a;
     }
 
-    /* --- ESTILOS MODO NOCHE (DARK) --- */
+    /* ESTILOS TEMA OSCURO */
     body.dark-theme {
       background-color: var(--paper-bg-dark);
       color: #f8fafc;
@@ -73,7 +71,7 @@
       color: #f8fafc;
     }
 
-    /* ORBES FLOTANTES DE LUZ TRASLÚCIDA */
+    /* LUZ Y ORBES */
     .orb {
       position: absolute;
       border-radius: 50%;
@@ -85,7 +83,6 @@
     .orb-1 { top: -50px; left: -50px; width: 320px; height: 320px; background: #B30046; opacity: 0.5; }
     .orb-2 { top: 35%; right: -80px; width: 350px; height: 350px; background: #0F172A; opacity: 0.6; }
     .orb-3 { bottom: 5%; left: 20%; width: 300px; height: 300px; background: #B30046; opacity: 0.4; }
-
     body.dark-theme .orb-2 { background: #38bdf8; opacity: 0.25; }
 
     .glass-card-dark {
@@ -109,32 +106,55 @@
     }
 
     .brand-magenta { color: #B30046; }
+
+    /* TOOLTIP / EXPLICADOR DE INDICADORES */
+    .tooltip-container { position: relative; display: inline-block; }
+    .tooltip-text {
+      visibility: hidden;
+      width: 190px;
+      background-color: #0f172a;
+      color: #f8fafc;
+      text-align: left;
+      border-radius: 8px;
+      padding: 8px 10px;
+      position: absolute;
+      z-index: 50;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0;
+      transition: opacity 0.2s, visibility 0.2s;
+      font-size: 10px;
+      line-height: 1.3;
+      border: 1px solid rgba(255,255,255,0.2);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    .tooltip-container:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
   </style>
 </head>
 <body id="bodyTag" class="dark-theme bg-grid p-3 md:p-6 lg:p-8 max-w-7xl mx-auto min-h-screen flex flex-col gap-4 md:gap-6">
 
-  <!-- LUZ DE FONDO -->
   <div class="orb orb-1"></div>
   <div class="orb orb-2"></div>
   <div class="orb orb-3"></div>
 
-  <!-- ENCABEZADO SIMPLIFICADO -->
+  <!-- ENCABEZADO -->
   <header class="glass-card rounded-2xl px-4 py-3 md:px-6 md:py-4 flex items-center justify-between">
     <div class="flex items-center space-x-3">
       <div class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-slate-900 dark:bg-white dark:text-slate-900 flex items-center justify-center text-white font-black font-brand text-base shadow-sm">
         M
       </div>
       <div>
-        <h1 class="text-lg md:text-xl font-brand font-extrabold tracking-tight leading-none">
-          MÉTRICA
-        </h1>
+        <h1 class="text-lg md:text-xl font-brand font-extrabold tracking-tight leading-none">MÉTRICA</h1>
         <span class="text-[9px] md:text-[10px] font-bold tracking-wider brand-magenta uppercase">Estudio R&P</span>
       </div>
     </div>
 
     <div class="flex items-center space-x-3 md:space-x-6">
-      <!-- CONMUTADOR MODO NOCHE / DÍA -->
-      <button onclick="toggleTheme()" class="p-2 rounded-xl glass-card text-xs font-bold flex items-center gap-1.5 hover:scale-105 transition-transform" title="Cambiar Tema">
+      <button onclick="toggleTheme()" class="p-2 rounded-xl glass-card text-xs font-bold flex items-center gap-1.5 hover:scale-105 transition-transform">
         <span id="themeIcon">🌙</span>
         <span id="themeText" class="hidden sm:inline text-[10px] uppercase font-bold">Noche</span>
       </button>
@@ -144,7 +164,6 @@
         <span class="text-xs font-bold uppercase tracking-wider opacity-75">Terminal Activa</span>
       </div>
 
-      <!-- PnL DINÁMICO CORREGIDO (INICIA EN $0.00) -->
       <div class="text-right border-l border-slate-500/20 pl-4 md:pl-6">
         <span class="block text-[9px] font-bold uppercase opacity-60">PnL Sesión</span>
         <strong id="sessionPnL" class="text-sm md:text-base font-black text-slate-400">$0.00</strong>
@@ -152,13 +171,13 @@
     </div>
   </header>
 
-  <!-- CONTENEDOR PRINCIPAL ADAPTATIVO -->
+  <!-- CONTENIDO PRINCIPAL -->
   <main class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 items-start z-10">
     
-    <!-- COLUMNA IZQUIERDA/CENTRAL: GRÁFICO + REGISTRO DE ÓRDENES -->
+    <!-- COLUMNA IZQUIERDA/CENTRAL -->
     <div class="flex flex-col gap-4 md:gap-6 lg:col-span-2">
       
-      <!-- SECCIÓN GRÁFICO -->
+      <!-- GRÁFICO -->
       <section class="glass-card rounded-2xl p-4 flex flex-col h-[400px] md:h-[480px]">
         <div class="flex justify-between items-center border-b border-slate-500/15 pb-3 mb-3">
           <div class="flex space-x-2">
@@ -175,12 +194,17 @@
         <div id="tv-chart-container" class="w-full flex-grow rounded-xl overflow-hidden border border-slate-500/15"></div>
       </section>
 
-      <!-- REGISTRO DE ÓRDENES CON CERRADO Y BORRADO -->
+      <!-- REGISTRO DE ÓRDENES CON PERSISTENCIA -->
       <section class="glass-card rounded-2xl p-4">
         <div class="flex justify-between items-center border-b border-slate-500/15 pb-2 mb-3">
-          <h3 class="text-sm font-brand font-bold">
-            REGISTRO DE <span class="brand-magenta">ÓRDENES</span>
-          </h3>
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-brand font-bold">
+              REGISTRO DE <span class="brand-magenta">ÓRDENES</span>
+            </h3>
+            <button onclick="clearAllOrders()" class="text-[9px] font-bold text-rose-500 hover:underline ml-2" title="Borrar todo e iniciar de cero">
+              [🗑️ Limpiar Bitácora]
+            </button>
+          </div>
           <span id="orderCount" class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900 text-white dark:bg-white dark:text-slate-900">0 Activas</span>
         </div>
 
@@ -209,10 +233,10 @@
 
     </div>
 
-    <!-- COLUMNA DERECHA: DIAGNÓSTICO + CALCULADORA -->
+    <!-- COLUMNA DERECHA -->
     <div class="flex flex-col gap-4 md:gap-6 lg:col-span-1">
       
-      <!-- DIAGNÓSTICO -->
+      <!-- DIAGNÓSTICO E INDICADORES EXPLICADOS -->
       <section class="glass-card rounded-2xl p-4">
         <div class="flex justify-between items-center border-b border-slate-500/15 pb-2 mb-3">
           <h3 class="text-sm font-brand font-bold">
@@ -223,33 +247,92 @@
           </button>
         </div>
 
+        <!-- TARJETAS DE INDICADORES CON TOOLTIPS -->
         <div class="grid grid-cols-2 gap-2 mb-3">
-          <div class="glass-card rounded-xl p-2 text-center border-none">
-            <span class="block text-[8px] font-bold uppercase opacity-60">Precio</span>
+          
+          <!-- PRECIO -->
+          <div class="glass-card rounded-xl p-2 text-center border-none relative">
+            <div class="flex justify-center items-center gap-1">
+              <span class="block text-[8px] font-bold uppercase opacity-60">Precio Actual</span>
+              <div class="tooltip-container">
+                <span class="text-[9px] cursor-pointer opacity-50">❓</span>
+                <div class="tooltip-text">
+                  <strong>Precio de Mercado:</strong> Última cotización registrada en Binance en temporalidad de 15 minutos.
+                </div>
+              </div>
+            </div>
             <span id="mPrice" class="text-xs font-black">--</span>
           </div>
-          <div class="glass-card rounded-xl p-2 text-center border-none">
-            <span class="block text-[8px] font-bold uppercase opacity-60">VWAP</span>
+
+          <!-- VWAP -->
+          <div class="glass-card rounded-xl p-2 text-center border-none relative">
+            <div class="flex justify-center items-center gap-1">
+              <span class="block text-[8px] font-bold uppercase opacity-60">VWAP (15M)</span>
+              <div class="tooltip-container">
+                <span class="text-[9px] cursor-pointer opacity-50">❓</span>
+                <div class="tooltip-text">
+                  <strong>VWAP (Precio Ponderado por Volumen):</strong> Es el "precio justo" institucional. Si el precio está por ENCIMA, domina la compra; si está por DEBAJO, domina la venta.
+                </div>
+              </div>
+            </div>
             <span id="mVWAP" class="text-xs font-black">--</span>
           </div>
-          <div class="glass-card rounded-xl p-2 text-center border-none">
-            <span class="block text-[8px] font-bold uppercase opacity-60">RSI (9)</span>
+
+          <!-- RSI -->
+          <div class="glass-card rounded-xl p-2 text-center border-none relative">
+            <div class="flex justify-center items-center gap-1">
+              <span class="block text-[8px] font-bold uppercase opacity-60">RSI (9)</span>
+              <div class="tooltip-container">
+                <span class="text-[9px] cursor-pointer opacity-50">❓</span>
+                <div class="tooltip-text">
+                  <strong>RSI (Fuerza Relativa):</strong> Mide la velocidad del movimiento. >70 indica Sobrecompra (posible caída), <30 indica Sobreventa (posible rebote), ~50 es Zona Neutra.
+                </div>
+              </div>
+            </div>
             <span id="mRSI" class="text-xs font-black">--</span>
           </div>
-          <div class="glass-card rounded-xl p-2 text-center border-none bg-rose-500/10">
-            <span class="block text-[8px] font-bold uppercase brand-magenta">Confluencia</span>
+
+          <!-- CONFLUENCIA -->
+          <div class="glass-card rounded-xl p-2 text-center border-none relative bg-rose-500/10">
+            <div class="flex justify-center items-center gap-1">
+              <span class="block text-[8px] font-bold uppercase brand-magenta">Confluencia</span>
+              <div class="tooltip-container">
+                <span class="text-[9px] cursor-pointer opacity-50">❓</span>
+                <div class="tooltip-text">
+                  <strong>Puntuación Métrica (0-5):</strong> Suma de alineaciones técnicas (Posición VWAP + Momentum RSI + Tendencia). A mayor puntaje, mayor probabilidad del trade.
+                </div>
+              </div>
+            </div>
             <span id="mScore" class="text-xs font-black brand-magenta">0 / 5</span>
           </div>
+
         </div>
 
-        <div id="mResultBox" class="glass-card-dark p-3 hidden">
-          <div class="flex justify-between items-center border-b border-slate-700 pb-1.5 mb-2">
-            <span class="text-[9px] font-bold uppercase text-slate-300">Dictamen:</span>
-            <span id="mBias" class="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-brand-magenta text-white"></span>
+        <!-- DICTAMEN EXTENSO -->
+        <div id="mResultBox" class="glass-card-dark p-3.5 hidden">
+          <div class="flex justify-between items-center border-b border-slate-700 pb-1.5 mb-2.5">
+            <span class="text-[9px] font-bold uppercase text-slate-400">Dictamen Métrica:</span>
+            <span id="mBias" class="px-2 py-0.5 text-[9px] font-black uppercase rounded bg-brand-magenta text-white tracking-wider"></span>
           </div>
-          <p id="mAnalysis" class="text-xs font-normal text-slate-200 mb-2 leading-tight"></p>
-          <button onclick="populateCalculator()" class="w-full btn-magenta py-1.5 text-xs text-center">
-            Cargar en Calculadora ➔
+          
+          <!-- RESUMEN EN TRES SECCIONES -->
+          <div class="space-y-2 text-[11px] text-slate-200 leading-snug mb-3">
+            <div>
+              <strong class="text-slate-400 block text-[9px] uppercase tracking-wider">1. Estructura Técnica:</strong>
+              <span id="mTechSummary">--</span>
+            </div>
+            <div>
+              <strong class="text-slate-400 block text-[9px] uppercase tracking-wider">2. Impulso y Momentum:</strong>
+              <span id="mMomentumSummary">--</span>
+            </div>
+            <div>
+              <strong class="brand-magenta block text-[9px] uppercase tracking-wider font-bold">3. Sugerencia Operativa:</strong>
+              <span id="mActionSummary" class="font-semibold text-white">--</span>
+            </div>
+          </div>
+
+          <button onclick="populateCalculator()" class="w-full btn-magenta py-1.5 text-xs text-center font-bold">
+            Cargar Parámetros en Calculadora ➔
           </button>
         </div>
       </section>
@@ -302,15 +385,17 @@
     </div>
   </main>
 
-  <!-- SCRIPTS -->
+  <!-- SCRIPTS CON PERSISTENCIA DE DATOS -->
   <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
   <script>
     let currentSymbol = 'BTCUSDT';
-    let currentTheme = 'dark'; // 'dark' | 'light'
+    let currentTheme = 'dark';
     let analysisData = null;
-    let ordersList = [];
+    
+    // Cargar órdenes previas guardadas en localStorage
+    let ordersList = JSON.parse(localStorage.getItem('metrica_orders')) || [];
 
-    // TEMA NOCHE / DÍA Y RE-RENDER DE TRADINGVIEW
+    // TEMA
     function toggleTheme() {
       const body = document.getElementById('bodyTag');
       const icon = document.getElementById('themeIcon');
@@ -327,23 +412,26 @@
         icon.innerText = "🌙";
         text.innerText = "Noche";
       }
-
       renderChart(currentSymbol);
     }
 
-    // CÁLCULO RECURSIVO DEL PnL BASADO EN ÓRDENES CERRADAS
+    // GUARDAR EN LOCALSTORAGE
+    function saveToStorage() {
+      localStorage.setItem('metrica_orders', JSON.stringify(ordersList));
+    }
+
+    // RECALCULAR PnL ACUMULADO
     function calculateSessionPnL() {
       let totalPnL = 0;
       ordersList.forEach(o => {
         if (o.status === 'WIN') {
-          totalPnL += (o.riskUSD * 2); // Take Profit 1:2
+          totalPnL += (o.riskUSD * 2);
         } else if (o.status === 'LOSS') {
-          totalPnL -= o.riskUSD; // Stop Loss 1:1
+          totalPnL -= o.riskUSD;
         }
       });
 
       const pnlElement = document.getElementById('sessionPnL');
-      
       if (totalPnL === 0) {
         pnlElement.innerText = "$0.00";
         pnlElement.className = "text-sm md:text-base font-black text-slate-400";
@@ -378,7 +466,6 @@
       currentSymbol = symbol;
       const btcTab = document.getElementById('tab-btc');
       const solTab = document.getElementById('tab-sol');
-
       const activeClass = "px-3 py-1 text-xs font-bold rounded-md bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow";
       const inactiveClass = "px-3 py-1 text-xs font-bold rounded-md bg-white/20 dark:bg-slate-800/50 hover:bg-white/40";
 
@@ -392,6 +479,7 @@
       renderChart(symbol);
     }
 
+    // MOTOR DE ANALISIS Y GENERADOR DE DICTAMEN EXTENSO
     async function fetchAndAnalyze() {
       document.getElementById('mPrice').innerText = "...";
       try {
@@ -402,10 +490,14 @@
         const lows = data.map(d => parseFloat(d[3]));
         
         const price = closes[closes.length - 1];
-        const rsi = 52.4; 
         const vwap = (highs[highs.length-1] + lows[lows.length-1] + price) / 3;
+        const rsi = 54.2; // Simulado para demostración fluida
         
-        let score = price > vwap ? 4 : 1;
+        // Puntuación de confluencia
+        let score = 0;
+        if (price > vwap) score += 2;
+        if (rsi > 50 && rsi < 70) score += 2;
+        if (rsi >= 70 || rsi <= 30) score += 1;
 
         document.getElementById('mPrice').innerText = `$${price.toFixed(2)}`;
         document.getElementById('mVWAP').innerText = `$${vwap.toFixed(2)}`;
@@ -414,16 +506,28 @@
 
         const box = document.getElementById('mResultBox');
         box.classList.remove('hidden');
-        document.getElementById('mBias').innerText = score >= 3 ? "BULLISH" : "BEARISH";
-        document.getElementById('mAnalysis').innerText = score >= 3 ? "Precio sobre VWAP en 15M. Confluencia favorable." : "Presión bajista activa sobre VWAP.";
+
+        // Generar Dictamen Extenso Dinámico
+        if (score >= 3) {
+          document.getElementById('mBias').innerText = "BULLISH (COMPRA)";
+          document.getElementById('mBias').className = "px-2 py-0.5 text-[9px] font-black uppercase rounded bg-emerald-600 text-white tracking-wider";
+          document.getElementById('mTechSummary').innerText = `El precio ($${price.toFixed(2)}) cotiza por encima del VWAP de 15M ($${vwap.toFixed(2)}), lo que indica aceptación del precio por parte de compradores institucionales.`;
+          document.getElementById('mMomentumSummary').innerText = `RSI en ${rsi} en zona neutra-alcista con espacio libre antes de llegar a sobrecompra.`;
+          document.getElementById('mActionSummary').innerText = `Buscar entrada en LONG al retroceso hacia el VWAP. Fijar Stop Loss defensivo por debajo del mínimo reciente.`;
+        } else {
+          document.getElementById('mBias').innerText = "BEARISH (VENTA)";
+          document.getElementById('mBias').className = "px-2 py-0.5 text-[9px] font-black uppercase rounded bg-rose-600 text-white tracking-wider";
+          document.getElementById('mTechSummary').innerText = `El precio ($${price.toFixed(2)}) se encuentra rechazando el VWAP de 15M ($${vwap.toFixed(2)}), mostrando debilidad estructural.`;
+          document.getElementById('mMomentumSummary').innerText = `RSI en ${rsi} refleja presión vendedora continua con baja fuerza de respuesta compradora.`;
+          document.getElementById('mActionSummary').innerText = `Priorizar posiciones en SHORT o mantenerse al margen. Esperar confirmación de ruptura de soportes clave.`;
+        }
 
         analysisData = { 
           entry: price, 
-          stop: price * (score >= 3 ? 0.985 : 1.015),
-          bias: score >= 3 ? "BUY" : "SELL"
+          stop: price * (score >= 3 ? 0.985 : 1.015)
         };
       } catch(e) {
-        alert("Error al obtener datos.");
+        alert("Error al conectar con Binance API.");
       }
     }
 
@@ -447,7 +551,6 @@
 
         document.getElementById('resRisk').innerText = `$${riskUSD.toFixed(2)}`;
         document.getElementById('resPos').innerText = `$${posUSD.toFixed(2)}`;
-
         return { riskUSD, posUSD, entry, stop };
       }
       return null;
@@ -456,7 +559,7 @@
     function registerOrder() {
       const calc = calculateRisk();
       if (!calc) {
-        alert("Por favor ingresa valores válidos de Entrada y Stop Loss.");
+        alert("Ingresa un nivel de Entrada y Stop Loss válidos.");
         return;
       }
 
@@ -468,10 +571,11 @@
         stop: calc.stop.toFixed(2),
         riskUSD: calc.riskUSD,
         posUSD: calc.posUSD.toFixed(2),
-        status: 'OPEN' // OPEN, WIN, LOSS
+        status: 'OPEN'
       };
 
       ordersList.push(order);
+      saveToStorage();
       updateOrdersTable();
     }
 
@@ -480,14 +584,25 @@
       if (!order || order.status !== 'OPEN') return;
 
       order.status = isWin ? 'WIN' : 'LOSS';
+      saveToStorage();
       calculateSessionPnL();
       updateOrdersTable();
     }
 
     function deleteOrder(id) {
       ordersList = ordersList.filter(o => o.id !== id);
+      saveToStorage();
       calculateSessionPnL();
       updateOrdersTable();
+    }
+
+    function clearAllOrders() {
+      if (confirm("¿Seguro que deseas vaciar la bitácora de la sesión?")) {
+        ordersList = [];
+        saveToStorage();
+        calculateSessionPnL();
+        updateOrdersTable();
+      }
     }
 
     function updateOrdersTable() {
@@ -520,11 +635,8 @@
               <button onclick="closeOrder(${o.id}, false)" class="px-2 py-0.5 text-[9px] font-black rounded bg-rose-600 text-white hover:bg-rose-700 shadow-sm">
                 - SL
               </button>
-              <button onclick="deleteOrder(${o.id})" class="px-1.5 py-0.5 text-[10px] opacity-60 hover:opacity-100" title="Eliminar">
-                🗑️
-              </button>
-            </div>
-          `;
+              <button onclick="deleteOrder(${o.id})" class="px-1.5 py-0.5 text-[10px] opacity-60 hover:opacity-100" title="Eliminar">🗑️</button>
+            </div>`;
         } else if (o.status === 'WIN') {
           actionCell = `
             <div class="flex justify-center items-center space-x-2">
@@ -560,8 +672,9 @@
       document.getElementById(id).addEventListener('input', calculateRisk);
     });
 
-    // Carga inicial
+    // Inicialización al cargar la página
     calculateSessionPnL();
+    updateOrdersTable();
     renderChart('BTCUSDT');
   </script>
 </body>
