@@ -1,685 +1,145 @@
-<!DOCTYPE html>
-<html lang="es" class="dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MÉTRICA | Terminal Pro - Advanced Risk Suite</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = { darkMode: 'class' }
-  </script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700;800&family=Inter:wght@400;600;700;800&display=swap');
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, ShieldCheck, AlertTriangle, TrendingUp, Layers, BarChart2 } from 'lucide-react';
 
-    :root {
-      --brand-magenta: #B30046;
-      --paper-bg-dark: #0B0F17;
-    }
+export default function App() {
+  const [symbol, setSymbol] = useState('SOLUSDT');
+  const [inputSymbol, setInputSymbol] = useState('SOLUSDT');
+  const [data, setData] = useState<any>({ price: 0, score: 50, ratio: 1 });
+  const ws = useRef<WebSocket | null>(null);
 
-    body {
-      font-family: 'Inter', sans-serif;
-      min-height: 100vh;
-      background-color: var(--paper-bg-dark);
-      color: #f8fafc;
-      overflow-x: hidden;
-      position: relative;
-    }
+  // Conexión directa desde el cliente web a la API pública de Binance WebSocket
+  useEffect(() => {
+    const formattedSymbol = symbol.toLowerCase();
+    const streamUrl = `wss://stream.binance.com:9443/ws/${formattedSymbol}@kline_15m/${formattedSymbol}@depth10@100ms`;
 
-    .font-brand { font-family: 'Space Grotesk', sans-serif; }
+    ws.current = new WebSocket(streamUrl);
 
-    .bg-grid {
-      background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-      background-size: 20px 20px;
-    }
-    
-    .glass-card {
-      background: rgba(15, 23, 42, 0.65) !important;
-      backdrop-filter: blur(16px) saturate(180%) !important;
-      -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-      border: 1px solid rgba(255, 255, 255, 0.1) !important;
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    }
-
-    .glass-input {
-      background: rgba(15, 23, 42, 0.8);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #f8fafc;
-    }
-
-    .btn-magenta {
-      background: #B30046; color: #ffffff; font-weight: 700; border-radius: 0.5rem; transition: all 0.2s ease;
-    }
-    .btn-magenta:hover {
-      background: #800032; box-shadow: 0 4px 12px rgba(179, 0, 70, 0.4);
-    }
-
-    .brand-magenta { color: #B30046; }
-
-    @keyframes pulse-glow {
-      0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
-      50% { box-shadow: 0 0 5px rgba(16, 185, 129, 0.1); }
-    }
-    .alert-be { animation: pulse-glow 2s infinite; }
-  </style>
-</head>
-<body class="bg-grid p-3 md:p-6 lg:p-8 max-w-7xl mx-auto min-h-screen flex flex-col gap-4 md:gap-6">
-
-  <!-- BANNER DE ALERTA GLOBAL BREAKEVEN -->
-  <div id="globalBeAlert" class="hidden glass-card border border-emerald-500/50 bg-emerald-950/40 rounded-2xl p-3 md:px-6 flex items-center justify-between z-50">
-    <div class="flex items-center space-x-3">
-      <span class="text-xl">🚀</span>
-      <div>
-        <h4 class="text-xs md:text-sm font-bold text-emerald-400 font-brand uppercase">¡Alerta de Breakeven Automático!</h4>
-        <p id="beAlertText" class="text-[11px] text-slate-300">Una orden activa ha alcanzado el TP1 (1:2). Se recomienda mover el Stop Loss a precio de entrada.</p>
-      </div>
-    </div>
-    <button onclick="dismissBeAlert()" class="text-xs font-bold text-slate-400 hover:text-white px-3 py-1 rounded bg-slate-800">Entendido</button>
-  </div>
-
-  <!-- ENCABEZADO -->
-  <header class="glass-card rounded-2xl px-4 py-3 md:px-6 md:py-4 flex items-center justify-between z-10">
-    <div class="flex items-center space-x-3">
-      <div class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white text-slate-900 flex items-center justify-center font-black font-brand text-base shadow-sm">
-        M
-      </div>
-      <div>
-        <h1 class="text-lg md:text-xl font-brand font-extrabold tracking-tight leading-none">MÉTRICA</h1>
-        <span class="text-[9px] md:text-[10px] font-bold tracking-wider brand-magenta uppercase">Estudio R&P • Pro Terminal Suite</span>
-      </div>
-    </div>
-
-    <div class="flex items-center space-x-4">
-      <div id="wsStatusBadge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800 text-[10px] font-bold text-slate-400">
-        <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Conectando...
-      </div>
-      <div class="text-right border-l border-slate-500/20 pl-4">
-        <span class="block text-[9px] font-bold uppercase opacity-60">PnL Sesión</span>
-        <strong id="sessionPnL" class="text-sm md:text-base font-black text-slate-400">$0.00</strong>
-      </div>
-    </div>
-  </header>
-
-  <!-- CONTENIDO PRINCIPAL -->
-  <main class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 items-start z-10">
-    
-    <!-- COLUMNA IZQUIERDA / CENTRAL -->
-    <div class="flex flex-col gap-4 md:gap-6 lg:col-span-2">
+    ws.current.onmessage = (event) => {
+      const payload = JSON.parse(event.data);
       
-      <!-- SCREENER -->
-      <section class="glass-card rounded-2xl p-4">
-        <div class="flex justify-between items-center border-b border-slate-500/15 pb-2 mb-3">
-          <h3 class="text-xs font-brand font-bold uppercase tracking-wider">
-            ⚡ Screener <span class="brand-magenta">Live Stream</span>
-          </h3>
-          <span class="text-[9px] font-semibold text-emerald-400">Tick-by-Tick</span>
-        </div>
-        <div id="screenerContainer" class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs"></div>
-      </section>
+      setData((prev: any) => {
+        let updated = { ...prev };
 
-      <!-- GRÁFICO -->
-      <section class="glass-card rounded-2xl p-4 flex flex-col h-[400px] md:h-[450px]">
-        <div class="flex justify-between items-center border-b border-slate-500/15 pb-2 mb-3">
-          <div class="flex items-center gap-3">
-            <span id="activeChartTitle" class="text-xs font-bold brand-magenta uppercase tracking-wider">
-              BTCUSDT • 15M CHART
-            </span>
-            <span id="trendBadge" class="text-[9px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-400">Analizando Tendencia...</span>
-          </div>
-          <span class="text-[10px] font-bold opacity-60">Binance Futures</span>
-        </div>
-        <div id="tv-chart-container" class="w-full flex-grow rounded-xl overflow-hidden border border-slate-500/15"></div>
-      </section>
-
-      <!-- BITÁCORA -->
-      <section class="glass-card rounded-2xl p-4">
-        <div class="flex justify-between items-center border-b border-slate-500/15 pb-2 mb-3">
-          <div class="flex items-center gap-2">
-            <h3 class="text-sm font-brand font-bold">REGISTRO DE <span class="brand-magenta">ÓRDENES</span></h3>
-            <button onclick="clearAllOrders()" class="text-[9px] font-bold text-rose-500 hover:underline">[🗑️ Limpiar]</button>
-          </div>
-          <span id="orderCount" class="text-[10px] font-bold px-2 py-0.5 rounded bg-white text-slate-900">0 Activas</span>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs">
-            <thead>
-              <tr class="border-b border-slate-500/15 text-[9px] uppercase font-bold opacity-60">
-                <th class="pb-2">Par</th>
-                <th class="pb-2">Tipo</th>
-                <th class="pb-2">Entrada</th>
-                <th class="pb-2">SL ($)</th>
-                <th class="pb-2">TP1 (1:2)</th>
-                <th class="pb-2">TP2 (1:3)</th>
-                <th class="pb-2">Palanca</th>
-                <th class="pb-2 text-center">Estado / Cierre</th>
-              </tr>
-            </thead>
-            <tbody id="ordersTableBody" class="divide-y divide-slate-500/10 font-semibold">
-              <tr><td colspan="8" class="py-4 text-center opacity-50 text-[11px]">No hay órdenes registradas.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-    </div>
-
-    <!-- COLUMNA DERECHA (CALCULADORA, ATR, EMA & TP) -->
-    <div class="flex flex-col gap-4 md:gap-6 lg:col-span-1">
-      
-      <section class="glass-card rounded-2xl p-4">
-        <div class="flex justify-between items-center border-b border-slate-500/15 pb-2 mb-3">
-          <h3 class="text-sm font-brand font-bold">
-            GESTIÓN DE <span class="brand-magenta">RIESGO & TENDENCIA</span>
-          </h3>
-          <span id="livePriceIndicator" class="text-xs font-black font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-400">
-            $0.00
-          </span>
-        </div>
-
-        <!-- PANEL ATR & EMA -->
-        <div class="glass-card p-3 rounded-xl mb-3 border border-slate-700/50 space-y-2">
-          <div class="flex justify-between items-center">
-            <span class="text-[9px] font-bold uppercase opacity-60">Muestra ATR (15M)</span>
-            <select id="atrLength" onchange="fetchMarketData(currentSymbol)" class="glass-input text-[10px] p-1 rounded font-bold brand-magenta">
-              <option value="14">14 Velas (~3.5 hrs)</option>
-              <option value="28">28 Velas (~7 hrs)</option>
-              <option value="50" selected>50 Velas (~12.5 hrs)</option>
-              <option value="96">96 Velas (24 hrs)</option>
-            </select>
-          </div>
-          <div class="flex justify-between items-center border-t border-slate-800 pt-1.5">
-            <span class="text-[9px] font-bold uppercase opacity-60">Volatilidad Promedio:</span>
-            <strong id="atrValue" class="text-sm font-mono font-black text-emerald-400">Calculando...</strong>
-          </div>
-          <div class="flex justify-between items-center border-t border-slate-800 pt-1.5">
-            <span class="text-[9px] font-bold uppercase opacity-60">Filtro EMA 50:</span>
-            <strong id="emaValText" class="text-xs font-mono font-bold text-slate-300">--</strong>
-          </div>
-        </div>
-
-        <div class="space-y-2.5 mb-4">
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-[8px] font-bold opacity-60 uppercase mb-1">Capital ($)</label>
-              <input id="cCapital" type="number" value="1000" class="glass-input w-full text-xs p-1.5 rounded-lg">
-            </div>
-            <div>
-              <label class="block text-[8px] font-bold opacity-60 uppercase mb-1">Riesgo por Trade</label>
-              <select id="cRisk" class="glass-input w-full text-xs p-1.5 rounded-lg">
-                <option value="1" selected>1% del Capital</option>
-                <option value="2">2% del Capital</option>
-                <option value="3">3% del Capital</option>
-                <option value="5">5% (Agresivo)</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <div class="flex justify-between items-center mb-1">
-                <label class="text-[8px] font-bold opacity-60 uppercase">Precio Entrada ($)</label>
-                <button onclick="lockCurrentPrice()" class="text-[8px] font-bold brand-magenta hover:underline">🔒 Fijar Actual</button>
-              </div>
-              <input id="cEntry" type="number" step="any" placeholder="0.00" class="glass-input w-full text-xs p-1.5 rounded-lg">
-            </div>
-            <div>
-              <label class="block text-[8px] font-bold opacity-60 uppercase mb-1">Dirección</label>
-              <select id="cDirection" class="glass-input w-full text-xs p-1.5 rounded-lg">
-                <option value="LONG" selected>LONG (Compra)</option>
-                <option value="SHORT">SHORT (Venta)</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- MODO STOP LOSS -->
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-[8px] font-bold opacity-60 uppercase mb-1">Precio Stop Loss ($)</label>
-              <input id="cStop" type="number" step="any" placeholder="0.00" class="glass-input w-full text-xs p-1.5 rounded-lg">
-            </div>
-            <div>
-              <label class="block text-[8px] font-bold opacity-60 uppercase mb-1">Modo Stop Loss</label>
-              <select id="cStopMode" class="glass-input w-full text-xs p-1.5 rounded-lg">
-                <option value="atr15" selected>1.5x ATR (Estándar)</option>
-                <option value="atr20">2.0x ATR (Amplio)</option>
-                <option value="pct10">1.0% Fijo</option>
-                <option value="pct15">1.5% Fijo</option>
-                <option value="custom">Manual ($)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- MUESTRA DE RESULTADOS Y TP -->
-        <div class="glass-card rounded-xl p-3 space-y-2 mb-4 bg-slate-900/40 border border-slate-800">
-          <div class="flex justify-between items-center text-xs">
-            <span class="opacity-60 text-[10px] uppercase font-bold">Riesgo Máximo (1R):</span>
-            <strong id="resRiskUSD" class="text-rose-400 font-black">$0.00</strong>
-          </div>
+        // Procesar Depth (Order Book)
+        if (payload.bids && payload.asks) {
+          const totalBids = payload.bids.reduce((acc: number, [p, q]: any) => acc + (parseFloat(p) * parseFloat(q)), 0);
+          const totalAsks = payload.asks.reduce((acc: number, [p, q]: any) => acc + (parseFloat(p) * parseFloat(q)), 0);
+          const ratio = totalAsks > 0 ? totalBids / totalAsks : 1;
           
-          <div class="flex justify-between items-center text-xs">
-            <span class="opacity-60 text-[10px] uppercase font-bold">Tamaño Posición:</span>
-            <strong id="resPosUSD" class="font-black text-white">$0.00</strong>
-          </div>
+          // Cálculo de Score dinámico
+          let liveScore = 50;
+          if (ratio >= 1.5) liveScore += 30;
+          else if (ratio >= 1.2) liveScore += 15;
+          else if (ratio < 0.8) liveScore -= 20;
 
-          <div class="flex justify-between items-center text-xs">
-            <span class="brand-magenta text-[10px] uppercase font-bold">Apalancamiento Recomendado:</span>
-            <strong id="resLeverage" class="px-2 py-0.5 rounded bg-brand-magenta text-white font-black">1x</strong>
-          </div>
+          updated.ratio = ratio;
+          updated.score = Math.min(Math.max(liveScore, 0), 100);
+        }
 
-          <div class="border-t border-slate-700/60 pt-2 space-y-1.5">
-            <div class="flex justify-between items-center text-xs">
-              <span class="text-emerald-400 font-bold text-[10px] uppercase">🎯 Take Profit 1 (1:2):</span>
-              <div class="text-right">
-                <span id="resTP1" class="font-mono font-bold text-emerald-300 block">$0.00</span>
-                <span id="resGainTP1" class="text-[9px] text-emerald-400 font-bold block">+$0.00</span>
-              </div>
+        // Procesar Precio
+        if (payload.k) {
+          updated.price = parseFloat(payload.k.c);
+        }
+
+        return updated;
+      });
+    };
+
+    return () => {
+      ws.current?.close();
+    };
+  }, [symbol]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputSymbol.trim()) {
+      setSymbol(inputSymbol.trim().toUpperCase());
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 font-sans">
+      {/* Header / Buscador */}
+      <header className="flex flex-col md:flex-row justify-between items-center gap-4 pb-6 border-b border-slate-800">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Trading Confluence Web</h1>
+          <p className="text-xs text-slate-400">Análisis de certeza y liquidez en tiempo real</p>
+        </div>
+
+        <form onSubmit={handleSearch} className="flex gap-2 bg-slate-900 p-2 rounded-xl border border-slate-800">
+          <input 
+            type="text" 
+            value={inputSymbol} 
+            onChange={(e) => setInputSymbol(e.target.value)}
+            placeholder="Buscar par (ej. BTCUSDT)..."
+            className="bg-transparent px-3 py-1 outline-none text-sm font-mono uppercase text-white"
+          />
+          <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-xs px-4 py-2 rounded-lg font-bold">
+            Buscar
+          </button>
+        </form>
+      </header>
+
+      {/* Grid Principal */}
+      <main className="grid grid-cols-1 md:grid-cols-12 gap-6 mt-6">
+        
+        {/* Score & Veredicto */}
+        <div className="md:col-span-5 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-semibold text-slate-400">SCORE EN VIVO</span>
+              <span className="font-mono text-emerald-400 font-bold bg-emerald-500/10 px-3 py-1 rounded-full text-xs">
+                {symbol} @ ${data.price ? data.price.toFixed(4) : '---'}
+              </span>
             </div>
 
-            <div class="flex justify-between items-center text-xs">
-              <span class="text-emerald-400 font-bold text-[10px] uppercase">🚀 Take Profit 2 (1:3):</span>
-              <div class="text-right">
-                <span id="resTP2" class="font-mono font-bold text-emerald-300 block">$0.00</span>
-                <span id="resGainTP2" class="text-[9px] text-emerald-400 font-bold block">+$0.00</span>
+            <div className="text-center my-10">
+              <span className="text-7xl font-extrabold font-mono text-white tracking-tight">{data.score}</span>
+              <span className="text-lg text-slate-500 font-bold">/100</span>
+
+              <div className="mt-4 flex items-center justify-center gap-2">
+                {data.score >= 70 ? (
+                  <span className="text-emerald-400 font-bold flex items-center gap-1">
+                    <ShieldCheck className="w-5 h-5" /> ALTA PROBABILIDAD
+                  </span>
+                ) : (
+                  <span className="text-amber-400 font-bold flex items-center gap-1">
+                    <AlertTriangle className="w-5 h-5" /> RIESGO ELEVADO
+                  </span>
+                )}
               </div>
             </div>
+          </div>
+
+          <div className="text-center text-xs text-slate-500 border-t border-slate-800 pt-4">
+            Presión del Libro de Órdenes: <strong className="text-slate-200">{data.ratio ? data.ratio.toFixed(2) : 1}x Bids/Asks</strong>
           </div>
         </div>
 
-        <button onclick="registerOrder()" class="w-full btn-magenta py-2.5 text-xs uppercase font-bold tracking-wider shadow-md">
-          + Registrar Orden con Filtro EMA & TP
-        </button>
-      </section>
+        {/* Métricas secundarias */}
+        <div className="md:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl">
+            <div className="flex items-center gap-2 text-indigo-400 mb-2">
+              <Layers className="w-4 h-4" />
+              <h3 className="text-sm font-semibold">Microestructura</h3>
+            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              Ratio Bids vs Asks actual: <span className="font-mono text-white font-bold">{data.ratio?.toFixed(2)}</span>
+            </p>
+          </div>
 
+          <div className="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl">
+            <div className="flex items-center gap-2 text-emerald-400 mb-2">
+              <TrendingUp className="w-4 h-4" />
+              <h3 className="text-sm font-semibold">Estado de Red</h3>
+            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              WebSocket Directo: <span className="text-emerald-400 font-bold">Conectado (100ms)</span>
+            </p>
+          </div>
+        </div>
+
+      </main>
     </div>
-  </main>
-
-  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-  <script>
-    const watchlist = ['btcusdt', 'solusdt', 'aceusdt', 'ethusdt', 'nearusdt', 'avaxusdt', 'dogeusdt', 'linkusdt'];
-    let currentSymbol = 'BTCUSDT';
-    let currentATR = 0;
-    let currentEMA50 = 0;
-    let isTrendBullish = true;
-    let tickerData = {};
-    let ws = null;
-    let ordersList = JSON.parse(localStorage.getItem('metrica_orders')) || [];
-    let autoUpdateEntryPrice = true;
-    let activeAlerts = new Set();
-
-    // 1. CÁLCULO ATR Y TENDENCIA EMA 50
-    async function fetchMarketData(symbol) {
-      document.getElementById('atrValue').innerText = "Calculando...";
-      document.getElementById('emaValText').innerText = "Calculando...";
-      const length = parseInt(document.getElementById('atrLength').value) || 50;
-
-      try {
-        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol.toUpperCase()}&interval=15m&limit=70`);
-        const klines = await res.json();
-        
-        // Cálculo ATR
-        let trSum = 0;
-        for (let i = klines.length - length; i < klines.length; i++) {
-          if (i <= 0) continue;
-          const high = parseFloat(klines[i][2]);
-          const low = parseFloat(klines[i][3]);
-          const prevClose = parseFloat(klines[i-1][4]);
-
-          const tr = Math.max(
-            high - low,
-            Math.abs(high - prevClose),
-            Math.abs(low - prevClose)
-          );
-          trSum += tr;
-        }
-        currentATR = trSum / length;
-        document.getElementById('atrValue').innerText = `$${currentATR.toFixed(currentATR < 1 ? 4 : 2)}`;
-
-        // Cálculo EMA 50
-        const closes = klines.map(k => parseFloat(k[4]));
-        const kFactor = 2 / (50 + 1);
-        let ema = closes[0];
-        for (let i = 1; i < closes.length; i++) {
-          ema = (closes[i] * kFactor) + (ema * (1 - kFactor));
-        }
-        currentEMA50 = ema;
-        const lastClose = closes[closes.length - 1];
-        isTrendBullish = lastClose >= currentEMA50;
-
-        document.getElementById('emaValText').innerText = `$${currentEMA50.toFixed(currentEMA50 < 1 ? 4 : 2)}`;
-        
-        const trendBadge = document.getElementById('trendBadge');
-        if (isTrendBullish) {
-          trendBadge.innerText = "🟢 TENDENCIA ALCISTA (EMA 50)";
-          trendBadge.className = "text-[9px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400";
-        } else {
-          trendBadge.innerText = "🔴 TENDENCIA BAJISTA (EMA 50)";
-          trendBadge.className = "text-[9px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-400";
-        }
-
-        calculateRiskAndLeverage();
-      } catch (e) {
-        document.getElementById('atrValue').innerText = "Error ATR";
-        document.getElementById('emaValText').innerText = "Error EMA";
-      }
-    }
-
-    // 2. WEBSOCKET SETUP CON DETECCIÓN DE BREAKEVEN EN VIVO
-    function initWebSocket() {
-      const streams = watchlist.map(s => `${s}@ticker`).join('/');
-      ws = new WebSocket(`wss://stream.binance.com:9443/ws/${streams}`);
-
-      ws.onopen = () => {
-        document.getElementById('wsStatusBadge').innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Live WS`;
-        document.getElementById('wsStatusBadge').className = "flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-bold text-emerald-400";
-      };
-
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.e === '24hrTicker') {
-          const sym = data.s;
-          const price = parseFloat(data.c);
-          const change = parseFloat(data.P);
-
-          tickerData[sym] = { price, change };
-          updateScreenerCard(sym, price, change);
-
-          // Checar órdenes activas para Alerta de Breakeven en tiempo real
-          checkBreakevenTriggers(sym, price);
-
-          if (sym === currentSymbol) {
-            document.getElementById('livePriceIndicator').innerText = `$${price.toFixed(price < 1 ? 6 : 2)}`;
-            if (autoUpdateEntryPrice) {
-              document.getElementById('cEntry').value = price.toFixed(price < 1 ? 6 : 2);
-              calculateRiskAndLeverage();
-            }
-          }
-        }
-      };
-
-      ws.onclose = () => setTimeout(initWebSocket, 3000);
-    }
-
-    function checkBreakevenTriggers(symbol, currentPrice) {
-      let triggerAlert = false;
-      ordersList.forEach(o => {
-        if (o.status === 'OPEN' && o.symbol === symbol && !o.beAlerted) {
-          const tp1 = parseFloat(o.tp1);
-          if (o.type === 'LONG' && currentPrice >= tp1) {
-            o.beAlerted = true;
-            triggerAlert = true;
-          } else if (o.type === 'SHORT' && currentPrice <= tp1) {
-            o.beAlerted = true;
-            triggerAlert = true;
-          }
-        }
-      });
-
-      if (triggerAlert) {
-        saveToStorage();
-        updateOrdersTable();
-        document.getElementById('globalBeAlert').classList.remove('hidden');
-        document.getElementById('globalBeAlert').classList.add('alert-be');
-      }
-    }
-
-    function dismissBeAlert() {
-      document.getElementById('globalBeAlert').classList.add('hidden');
-    }
-
-    function updateScreenerCard(symbol, price, change) {
-      let card = document.getElementById(`sc-${symbol}`);
-      const isPos = change >= 0;
-      
-      if (!card) {
-        const container = document.getElementById('screenerContainer');
-        card = document.createElement('div');
-        card.id = `sc-${symbol}`;
-        card.onclick = () => selectSymbol(symbol);
-        card.className = "p-2 glass-card rounded-xl cursor-pointer hover:border-white/40 transition-all text-left";
-        container.appendChild(card);
-      }
-
-      card.innerHTML = `
-        <div class="flex justify-between items-center">
-          <span class="font-bold">${symbol.replace('USDT','')}</span>
-          <span class="text-[9px] px-1 rounded ${isPos ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} font-black">
-            ${isPos ? '+' : ''}${change.toFixed(1)}%
-          </span>
-        </div>
-        <div class="text-[11px] font-black mt-1">$${price.toFixed(price < 1 ? 4 : 2)}</div>
-      `;
-    }
-
-    function selectSymbol(symbol) {
-      currentSymbol = symbol;
-      autoUpdateEntryPrice = true;
-      document.getElementById('activeChartTitle').innerText = `${symbol} • 15M CHART`;
-      renderChart(symbol);
-      fetchMarketData(symbol);
-      if (tickerData[symbol]) {
-        document.getElementById('cEntry').value = tickerData[symbol].price.toFixed(tickerData[symbol].price < 1 ? 6 : 2);
-      }
-    }
-
-    function lockCurrentPrice() {
-      autoUpdateEntryPrice = false;
-    }
-
-    function renderChart(symbol) {
-      document.getElementById('tv-chart-container').innerHTML = '';
-      new TradingView.widget({
-        "autosize": true,
-        "symbol": `BINANCE:${symbol}`,
-        "interval": "15",
-        "timezone": "Etc/UTC",
-        "theme": "dark",
-        "style": "1",
-        "locale": "es",
-        "hide_top_toolbar": true,
-        "hide_side_toolbar": true,
-        "container_id": "tv-chart-container"
-      });
-    }
-
-    // 3. CALCULADORA DE RIESGO & TPs
-    function calculateRiskAndLeverage() {
-      const cap = parseFloat(document.getElementById('cCapital').value) || 0;
-      const riskPct = parseFloat(document.getElementById('cRisk').value) || 0;
-      const entry = parseFloat(document.getElementById('cEntry').value) || 0;
-      const direction = document.getElementById('cDirection').value;
-      const stopMode = document.getElementById('cStopMode').value;
-      let stop = parseFloat(document.getElementById('cStop').value) || 0;
-
-      if (entry <= 0) return null;
-
-      if (stopMode === 'atr15' && currentATR > 0) {
-        stop = direction === 'LONG' ? entry - (currentATR * 1.5) : entry + (currentATR * 1.5);
-        document.getElementById('cStop').value = stop.toFixed(entry < 1 ? 6 : 2);
-      } else if (stopMode === 'atr20' && currentATR > 0) {
-        stop = direction === 'LONG' ? entry - (currentATR * 2.0) : entry + (currentATR * 2.0);
-        document.getElementById('cStop').value = stop.toFixed(entry < 1 ? 6 : 2);
-      } else if (stopMode === 'pct10') {
-        stop = direction === 'LONG' ? entry * 0.99 : entry * 1.01;
-        document.getElementById('cStop').value = stop.toFixed(entry < 1 ? 6 : 2);
-      } else if (stopMode === 'pct15') {
-        stop = direction === 'LONG' ? entry * 0.985 : entry * 1.015;
-        document.getElementById('cStop').value = stop.toFixed(entry < 1 ? 6 : 2);
-      }
-
-      if (stop <= 0 || stop === entry) return null;
-
-      const slDistance = Math.abs(entry - stop);
-      const riskUSD = cap * (riskPct / 100);
-      const slDistPct = slDistance / entry;
-      const posNocionalUSD = riskUSD / slDistPct;
-
-      let leverage = Math.ceil(posNocionalUSD / cap);
-      if (leverage < 1) leverage = 1;
-      if (leverage > 75) leverage = 75;
-
-      let tp1 = direction === 'LONG' ? entry + (slDistance * 2) : entry - (slDistance * 2);
-      let tp2 = direction === 'LONG' ? entry + (slDistance * 3) : entry - (slDistance * 3);
-
-      const gainTP1 = riskUSD * 2;
-      const gainTP2 = riskUSD * 3;
-      const precision = entry < 1 ? 6 : 2;
-
-      document.getElementById('resRiskUSD').innerText = `$${riskUSD.toFixed(2)}`;
-      document.getElementById('resPosUSD').innerText = `$${posNocionalUSD.toFixed(2)}`;
-      document.getElementById('resLeverage').innerText = `${leverage}x`;
-      
-      document.getElementById('resTP1').innerText = `$${tp1.toFixed(precision)}`;
-      document.getElementById('resGainTP1').innerText = `+$${gainTP1.toFixed(2)}`;
-      
-      document.getElementById('resTP2').innerText = `$${tp2.toFixed(precision)}`;
-      document.getElementById('resGainTP2').innerText = `+$${gainTP2.toFixed(2)}`;
-
-      return { riskUSD, posNocionalUSD, entry, stop, tp1, tp2, leverage, slDistPct, direction };
-    }
-
-    // 4. REGISTRO DE ÓRDENES Y FILTRO DE TENDENCIA
-    function registerOrder() {
-      const calc = calculateRiskAndLeverage();
-      if (!calc) {
-        alert("Configura un Precio de Entrada y Stop Loss válidos.");
-        return;
-      }
-
-      // Advertencia si la operación va en contra de la EMA 50
-      if ((calc.direction === 'LONG' && !isTrendBullish) || (calc.direction === 'SHORT' && isTrendBullish)) {
-        const confirmCounter = confirm("⚠️ ADVERTENCIA DE TENDENCIA: Estás operando en contra de la EMA 50 actual. ¿Deseas registrar la orden de todas formas?");
-        if (!confirmCounter) return;
-      }
-
-      const precision = calc.entry < 1 ? 6 : 2;
-      const order = {
-        id: Date.now(),
-        symbol: currentSymbol,
-        type: calc.direction,
-        entry: calc.entry.toFixed(precision),
-        stop: calc.stop.toFixed(precision),
-        tp1: calc.tp1.toFixed(precision),
-        tp2: calc.tp2.toFixed(precision),
-        leverage: calc.leverage,
-        riskUSD: calc.riskUSD,
-        status: 'OPEN',
-        beAlerted: false
-      };
-
-      ordersList.push(order);
-      saveToStorage();
-      updateOrdersTable();
-    }
-
-    function closeOrder(id, resultType) {
-      const order = ordersList.find(o => o.id === id);
-      if (!order || order.status !== 'OPEN') return;
-
-      order.status = resultType;
-      saveToStorage();
-      calculateSessionPnL();
-      updateOrdersTable();
-    }
-
-    function deleteOrder(id) {
-      ordersList = ordersList.filter(o => o.id !== id);
-      saveToStorage();
-      calculateSessionPnL();
-      updateOrdersTable();
-    }
-
-    function clearAllOrders() {
-      if (confirm("¿Vaciar bitácora de órdenes?")) {
-        ordersList = [];
-        saveToStorage();
-        calculateSessionPnL();
-        updateOrdersTable();
-      }
-    }
-
-    function saveToStorage() {
-      localStorage.setItem('metrica_orders', JSON.stringify(ordersList));
-    }
-
-    function calculateSessionPnL() {
-      let totalPnL = 0;
-      ordersList.forEach(o => {
-        if (o.status === 'TP1') totalPnL += (o.riskUSD * 2);
-        else if (o.status === 'TP2') totalPnL += (o.riskUSD * 3);
-        else if (o.status === 'SL') totalPnL -= o.riskUSD;
-      });
-
-      const el = document.getElementById('sessionPnL');
-      if (totalPnL === 0) { el.innerText = "$0.00"; el.className = "text-sm font-black text-slate-400"; }
-      else if (totalPnL > 0) { el.innerText = `+$${totalPnL.toFixed(2)}`; el.className = "text-sm font-black text-emerald-500"; }
-      else { el.innerText = `-$${Math.abs(totalPnL).toFixed(2)}`; el.className = "text-sm font-black text-rose-500"; }
-    }
-
-    function updateOrdersTable() {
-      const tbody = document.getElementById('ordersTableBody');
-      const countBadge = document.getElementById('orderCount');
-
-      if (ordersList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="py-4 text-center opacity-50 text-[11px]">No hay órdenes registradas.</td></tr>`;
-        countBadge.innerText = `0 Activas`;
-        return;
-      }
-
-      const openCount = ordersList.filter(o => o.status === 'OPEN').length;
-      countBadge.innerText = `${openCount} Activas`;
-
-      tbody.innerHTML = ordersList.map(o => {
-        let action = '';
-        if (o.status === 'OPEN') {
-          let beTag = o.beAlerted ? `<span class="block text-[8px] text-amber-400 font-bold animate-pulse">⚡ ¡Mover SL a Entrada!</span>` : '';
-          action = `
-            <div class="flex flex-col items-center gap-1">
-              <div class="flex items-center gap-1">
-                <button onclick="closeOrder(${o.id}, 'TP1')" class="px-1.5 py-0.5 text-[8px] font-black rounded bg-emerald-600 text-white" title="Ganancia 1:2">+TP1</button>
-                <button onclick="closeOrder(${o.id}, 'TP2')" class="px-1.5 py-0.5 text-[8px] font-black rounded bg-emerald-500 text-slate-950" title="Ganancia 1:3">+TP2</button>
-                <button onclick="closeOrder(${o.id}, 'SL')" class="px-1.5 py-0.5 text-[8px] font-black rounded bg-rose-600 text-white" title="Pérdida 1R">-SL</button>
-                <button onclick="deleteOrder(${o.id})" class="text-[10px] opacity-60 hover:opacity-100">🗑️</button>
-              </div>
-              ${beTag}
-            </div>`;
-        } else if (o.status === 'TP1') {
-          action = `<span class="font-black text-emerald-400 text-[10px]">+$${(o.riskUSD * 2).toFixed(2)} (TP1 1:2)</span>`;
-        } else if (o.status === 'TP2') {
-          action = `<span class="font-black text-emerald-300 text-[10px]">+$${(o.riskUSD * 3).toFixed(2)} (TP2 1:3)</span>`;
-        } else if (o.status === 'SL') {
-          action = `<span class="font-black text-rose-500 text-[10px]">-$${o.riskUSD.toFixed(2)} (SL)</span>`;
-        }
-
-        return `
-          <tr class="hover:bg-white/5 transition-colors">
-            <td class="py-2 font-bold">${o.symbol}</td>
-            <td class="py-2"><span class="px-1 py-0.5 text-[8px] font-black rounded ${o.type === 'LONG' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">${o.type}</span></td>
-            <td class="py-2">$${o.entry}</td>
-            <td class="py-2 text-rose-400">$${o.stop}</td>
-            <td class="py-2 text-emerald-400 font-mono">$${o.tp1}</td>
-            <td class="py-2 text-emerald-300 font-mono">$${o.tp2}</td>
-            <td class="py-2 font-black brand-magenta">${o.leverage}x</td>
-            <td class="py-2 text-center">${action}</td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    ['cCapital', 'cRisk', 'cEntry', 'cStop', 'cDirection', 'cStopMode'].forEach(id => {
-      document.getElementById(id).addEventListener('input', () => {
-        if (id === 'cEntry') autoUpdateEntryPrice = false;
-        calculateRiskAndLeverage();
-      });
-      document.getElementById(id).addEventListener('change', calculateRiskAndLeverage);
-    });
-
-    // Inicialización
-    initWebSocket();
-    fetchMarketData('BTCUSDT');
-    renderChart('BTCUSDT');
-    calculateSessionPnL();
-    updateOrdersTable();
-  </script>
-</body>
-</html>
+  );
+}
