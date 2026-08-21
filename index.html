@@ -3,22 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trading Engine - Selector de Activos</title>
+  <title>Trading Engine - Fixed Search</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
 
-  <!-- Header con Buscador Inteligente -->
+  <!-- Header -->
   <header class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 pb-6 border-b border-slate-800">
     <div>
       <h1 class="text-2xl font-bold text-white tracking-tight">Trading Decision Engine</h1>
-      <p class="text-xs text-slate-400">Búsqueda directa de pares CEX / DEX</p>
+      <p class="text-xs text-slate-400">Motor de Búsqueda CEX (Spot/Futuros) y DEX</p>
     </div>
 
     <div class="relative w-full md:w-96">
       <div class="flex bg-slate-900 p-1.5 rounded-xl border border-slate-800">
         <select id="provider-type" onchange="clearSearch()" class="bg-slate-800 text-xs text-slate-200 font-semibold px-2 py-1 rounded outline-none cursor-pointer mr-2">
-          <option value="BINANCE">BINANCE</option>
+          <option value="BINANCE_FUTURES">BINANCE FUTUROS</option>
+          <option value="BINANCE_SPOT">BINANCE SPOT</option>
           <option value="DEXSCREENER">DEXSCREENER</option>
         </select>
 
@@ -26,28 +27,19 @@
           type="text" 
           id="ticker-input" 
           oninput="handleSearchInput(this.value)"
-          placeholder="Buscar activo (ej. SOL, PEPE, BTC)..." 
-          class="bg-transparent px-3 py-1 outline-none text-sm font-mono text-white w-full"
+          placeholder="Buscar (ej. AGT, SOL, PEPE)..." 
+          class="bg-transparent px-3 py-1 outline-none text-sm font-mono text-white w-full uppercase"
           autocomplete="off"
         >
       </div>
 
-      <!-- Desplegable de Sugerencias -->
+      <!-- Menú Desplegable Corregido -->
       <div id="suggestions-box" class="hidden absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto"></div>
     </div>
   </header>
 
-  <!-- Accessos Rápidos -->
-  <div class="max-w-6xl mx-auto mt-4 flex items-center gap-2 overflow-x-auto pb-2">
-    <span class="text-xs text-slate-500 font-semibold">Popular:</span>
-    <button onclick="selectAsset('BTCUSDT', 'BINANCE')" class="px-2.5 py-1 text-xs bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg font-mono">BTCUSDT</button>
-    <button onclick="selectAsset('SOLUSDT', 'BINANCE')" class="px-2.5 py-1 text-xs bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg font-mono">SOLUSDT</button>
-    <button onclick="selectAsset('ETHUSDT', 'BINANCE')" class="px-2.5 py-1 text-xs bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg font-mono">ETHUSDT</button>
-    <button onclick="selectAsset('PEPE', 'DEXSCREENER')" class="px-2.5 py-1 text-xs bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg font-mono text-indigo-400">PEPE (DEX)</button>
-  </div>
-
   <!-- Panel Principal -->
-  <main class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 mt-4">
+  <main class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 mt-6">
     
     <!-- Semáforo y Score -->
     <div id="semaphore-card" class="md:col-span-5 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between transition-colors duration-500">
@@ -58,8 +50,8 @@
             <button id="btn-short" onclick="setDirection('SHORT')" class="px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white">SHORT (VENTA)</button>
           </div>
 
-          <span id="asset-tag" class="font-mono text-white font-bold bg-slate-800 px-3 py-1 rounded-full text-xs truncate max-w-[150px]">
-            SOLUSDT @ $---
+          <span id="asset-tag" class="font-mono text-white font-bold bg-slate-800 px-3 py-1 rounded-full text-xs">
+            SELECCIONA ACTIVO
           </span>
         </div>
 
@@ -69,19 +61,19 @@
           <span class="text-lg text-slate-500 font-bold">/100</span>
 
           <div id="verdict-container" class="mt-4 flex items-center justify-center gap-2">
-            <span class="text-slate-400 font-bold">SELECCIONA UN ACTIVO...</span>
+            <span class="text-slate-400 font-bold">ESPERANDO SELECCIÓN...</span>
           </div>
         </div>
       </div>
 
       <div class="space-y-2 border-t border-slate-800/80 pt-4 text-xs">
         <div class="flex justify-between">
-          <span class="text-slate-400">Presión Bids/Asks (Ratio):</span>
+          <span class="text-slate-400">Presión Compra/Venta:</span>
           <span id="ratio-display" class="font-mono font-bold text-slate-200">1.00x</span>
         </div>
         <div class="flex justify-between">
-          <span class="text-slate-400">Origen de Datos:</span>
-          <span id="source-display" class="font-mono font-bold text-indigo-400">Binance WS</span>
+          <span class="text-slate-400">Fuente:</span>
+          <span id="source-display" class="font-mono font-bold text-indigo-400">---</span>
         </div>
       </div>
     </div>
@@ -89,15 +81,9 @@
     <!-- Módulos Informativos -->
     <div class="md:col-span-7 grid grid-cols-1 gap-4">
       <div class="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl">
-        <h3 class="text-sm font-semibold text-indigo-400 mb-1">Estado de la Búsqueda</h3>
+        <h3 class="text-sm font-semibold text-indigo-400 mb-1">Estado de Conexión</h3>
         <p id="search-status" class="text-xs text-slate-400 leading-relaxed">
-          Usa la barra superior para buscar cualquier par. Si el activo no existe en Binance, selecciona DEXScreener para buscarlo en redes descentralizadas.
-        </p>
-      </div>
-      <div class="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl">
-        <h3 class="text-sm font-semibold text-cyan-400 mb-1">Nota sobre activos no encontrados</h3>
-        <p class="text-xs text-slate-400 leading-relaxed">
-          Tokens recién creados o sin suficiente volumen no cotizan en Binance. La opción DEXScreener los localiza directamente mediante su dirección de contrato inteligente.
+          Selecciona la red adecuada en el menú superior: Binance Futuros para contratos perpetuos (como AGTUSDT), Binance Spot para compra directa o DEXScreener para pares en DEX.
         </p>
       </div>
     </div>
@@ -105,11 +91,15 @@
   </main>
 
   <script>
-    let currentProvider = 'BINANCE';
     let currentDirection = 'LONG';
     let socket = null;
     let debounceTimer = null;
     let currentRatio = 1;
+
+    function clearSearch() {
+      document.getElementById('ticker-input').value = '';
+      document.getElementById('suggestions-box').classList.add('hidden');
+    }
 
     function setDirection(dir) {
       currentDirection = dir;
@@ -124,53 +114,57 @@
       updateEngineUI();
     }
 
-    function clearSearch() {
-      document.getElementById('ticker-input').value = '';
-      document.getElementById('suggestions-box').classList.add('hidden');
-    }
-
-    // Buscador interactivo
     function handleSearchInput(query) {
       clearTimeout(debounceTimer);
       const box = document.getElementById('suggestions-box');
+      const provider = document.getElementById('provider-type').value;
 
-      if (!query || query.length < 2) {
+      if (!query || query.trim().length < 2) {
         box.classList.add('hidden');
         return;
       }
 
       debounceTimer = setTimeout(async () => {
-        const provider = document.getElementById('provider-type').value;
         box.innerHTML = '<div class="p-3 text-xs text-slate-500">Buscando coincidencia...</div>';
         box.classList.remove('hidden');
 
-        if (provider === 'BINANCE') {
+        const cleanQuery = query.trim().toUpperCase();
+
+        if (provider === 'BINANCE_FUTURES' || provider === 'BINANCE_SPOT') {
           try {
-            const res = await fetch(`https://api.binance.com/api/v3/exchangeInfo`);
+            const isFutures = provider === 'BINANCE_FUTURES';
+            const endpoint = isFutures 
+              ? 'https://fapi.binance.com/fapi/v1/exchangeInfo' 
+              : 'https://api.binance.com/api/v3/exchangeInfo';
+
+            const res = await fetch(endpoint);
             const data = await res.json();
+            
             const matches = data.symbols
-              .filter(s => s.symbol.includes(query.toUpperCase()) && s.status === 'TRADING')
-              .slice(0, 8);
+              .filter(s => s.symbol.includes(cleanQuery) && (isFutures ? s.status === 'TRADING' : s.status === 'TRADING'))
+              .slice(0, 6);
 
             if (matches.length === 0) {
-              box.innerHTML = '<div class="p-3 text-xs text-slate-500">No encontrado en Binance. Prueba con DEXScreener.</div>';
+              box.innerHTML = `<div class="p-3 text-xs text-slate-500">No encontrado en ${isFutures ? 'Futuros' : 'Spot'}. Prueba cambiando de pestaña.</div>`;
               return;
             }
 
             box.innerHTML = matches.map(m => `
-              <div onclick="selectAsset('${m.symbol}', 'BINANCE')" class="p-2.5 hover:bg-slate-800 cursor-pointer flex justify-between items-center text-xs border-b border-slate-800/50">
+              <div onclick="connectBinance('${m.symbol}', '${isFutures ? 'FUTURES' : 'SPOT'}')" class="p-2.5 hover:bg-slate-800 cursor-pointer flex justify-between items-center text-xs border-b border-slate-800/50">
                 <span class="font-mono font-bold text-white">${m.symbol}</span>
-                <span class="text-[10px] text-slate-500">${m.baseAsset}/${m.quoteAsset}</span>
+                <span class="text-[10px] text-indigo-400 font-semibold">${isFutures ? 'PERPETUAL' : 'SPOT'}</span>
               </div>
             `).join('');
+
           } catch (e) {
             box.innerHTML = '<div class="p-3 text-xs text-rose-400">Error al consultar Binance.</div>';
           }
         } else {
+          // DEXScreener
           try {
-            const res = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${query}`);
+            const res = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${cleanQuery}`);
             const data = await res.json();
-            
+
             if (!data.pairs || data.pairs.length === 0) {
               box.innerHTML = '<div class="p-3 text-xs text-slate-500">No encontrado en DEXScreener.</div>';
               return;
@@ -178,34 +172,56 @@
 
             const matches = data.pairs.slice(0, 6);
             box.innerHTML = matches.map(p => `
-              <div onclick="selectDexPair('${p.pairAddress}', '${p.baseToken.symbol}', '${p.priceUsd}')" class="p-2.5 hover:bg-slate-800 cursor-pointer flex justify-between items-center text-xs border-b border-slate-800/50">
+              <div onclick="selectDexPair('${p.baseToken.symbol}', '${p.priceUsd}', '${p.chainId}')" class="p-2.5 hover:bg-slate-800 cursor-pointer flex justify-between items-center text-xs border-b border-slate-800/50">
                 <div>
-                  <span class="font-mono font-bold text-indigo-400">${p.baseToken.symbol}</span>
+                  <span class="font-mono font-bold text-cyan-400">${p.baseToken.symbol}/${p.quoteToken.symbol}</span>
                   <span class="text-[10px] text-slate-500 block">${p.chainId.toUpperCase()} (${p.dexId})</span>
                 </div>
-                <span class="font-mono text-slate-300">$${parseFloat(p.priceUsd).toFixed(4)}</span>
+                <span class="font-mono text-slate-200">$${parseFloat(p.priceUsd).toFixed(6)}</span>
               </div>
             `).join('');
           } catch (e) {
-            box.innerHTML = '<div class="p-3 text-xs text-rose-400">Error en DEXScreener.</div>';
+            box.innerHTML = '<div class="p-3 text-xs text-rose-400">Error de conexión con DEXScreener.</div>';
           }
         }
       }, 300);
     }
 
-    function selectAsset(symbol, provider) {
-      document.getElementById('ticker-input').value = symbol;
+    function selectDexPair(symbol, price, chain) {
       document.getElementById('suggestions-box').classList.add('hidden');
-      document.getElementById('source-display').textContent = provider;
-      connectBinance(symbol);
+      document.getElementById('asset-tag').textContent = `${symbol} @ $${price}`;
+      document.getElementById('source-display').textContent = `DEXScreener (${chain.toUpperCase()})`;
+      document.getElementById('search-status').textContent = `Datos cargados para ${symbol} en la red ${chain}.`;
     }
 
-    function selectDexPair(address, symbol, price) {
-      document.getElementById('ticker-input').value = symbol;
+    function connectBinance(symbol, market) {
+      if (socket) socket.close();
       document.getElementById('suggestions-box').classList.add('hidden');
-      document.getElementById('source-display').textContent = 'DEXScreener';
-      document.getElementById('asset-tag').textContent = `${symbol} @ $${price}`;
-      document.getElementById('search-status').textContent = `Conectado al pool de DEXScreener para ${symbol}.`;
+
+      const formattedSymbol = symbol.toLowerCase();
+      const baseUrl = market === 'FUTURES' ? 'wss://fstream.binance.com/ws/' : 'wss://stream.binance.com:9443/ws/';
+      const streamUrl = `${baseUrl}${formattedSymbol}@kline_15m/${formattedSymbol}@depth10@100ms`;
+
+      document.getElementById('source-display').textContent = `Binance (${market})`;
+      document.getElementById('search-status').textContent = `Conectado al WebStream de Binance (${market}) para ${symbol}.`;
+
+      socket = new WebSocket(streamUrl);
+
+      socket.onmessage = (event) => {
+        const payload = JSON.parse(event.data);
+
+        if (payload.bids && payload.asks) {
+          const totalBids = payload.bids.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
+          const totalAsks = payload.asks.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
+          currentRatio = totalAsks > 0 ? totalBids / totalAsks : 1;
+        }
+
+        if (payload.k) {
+          const price = parseFloat(payload.k.c).toFixed(6);
+          document.getElementById('asset-tag').textContent = `${symbol.toUpperCase()} @ $${price}`;
+          updateEngineUI();
+        }
+      };
     }
 
     function updateEngineUI() {
@@ -233,33 +249,6 @@
         verdict.innerHTML = '<span class="text-amber-400 font-bold">⚠ SIN CONFLUENCIA / ESPERAR</span>';
       }
     }
-
-    function connectBinance(symbol) {
-      if (socket) socket.close();
-      const formattedSymbol = symbol.toLowerCase();
-      const streamUrl = `wss://stream.binance.com:9443/ws/${formattedSymbol}@kline_15m/${formattedSymbol}@depth10@100ms`;
-
-      socket = new WebSocket(streamUrl);
-
-      socket.onmessage = (event) => {
-        const payload = JSON.parse(event.data);
-
-        if (payload.bids && payload.asks) {
-          const totalBids = payload.bids.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
-          const totalAsks = payload.asks.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
-          currentRatio = totalAsks > 0 ? totalBids / totalAsks : 1;
-        }
-
-        if (payload.k) {
-          const price = parseFloat(payload.k.c).toFixed(4);
-          document.getElementById('asset-tag').textContent = `${symbol.toUpperCase()} @ $${price}`;
-          updateEngineUI();
-        }
-      };
-    }
-
-    // Inicializar con SOLUSDT
-    selectAsset('SOLUSDT', 'BINANCE');
   </script>
 </body>
 </html>
