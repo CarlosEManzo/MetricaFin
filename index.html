@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trading Engine - Anti-Freeze Edition</title>
+  <title>Trading Engine - Full Indicators</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
@@ -12,7 +12,7 @@
   <header class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 pb-6 border-b border-slate-800">
     <div>
       <h1 class="text-2xl font-bold text-white tracking-tight">Trading Decision Engine</h1>
-      <p class="text-xs text-slate-400">Búsqueda Automática Unificada (CEX Futuros, Spot & DEX)</p>
+      <p class="text-xs text-slate-400">Búsqueda Unificada con Indicadores y Libro de Órdenes</p>
     </div>
 
     <!-- Buscador Universal -->
@@ -27,8 +27,6 @@
           autocomplete="off"
         >
       </div>
-
-      <!-- Menú Desplegable -->
       <div id="suggestions-box" class="hidden absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto"></div>
     </div>
   </header>
@@ -63,7 +61,7 @@
 
       <div class="space-y-2 border-t border-slate-800/80 pt-4 text-xs">
         <div class="flex justify-between">
-          <span class="text-slate-400">Presión Compra/Venta:</span>
+          <span class="text-slate-400">Presión Orderbook (Bids/Asks):</span>
           <span id="ratio-display" class="font-mono font-bold text-slate-200">1.00x</span>
         </div>
         <div class="flex justify-between">
@@ -73,14 +71,62 @@
       </div>
     </div>
 
-    <!-- Módulos Informativos -->
+    <!-- Módulos Informativos: Indicadores & Libro de Órdenes -->
     <div class="md:col-span-7 grid grid-cols-1 gap-4">
+      
+      <!-- Panel de Indicadores Técnicos -->
+      <div class="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+        <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800/60">
+          <span class="text-[10px] text-slate-400 font-semibold uppercase block">EMA 20</span>
+          <span id="ema20-val" class="font-mono font-bold text-sm text-slate-200">--</span>
+        </div>
+        <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800/60">
+          <span class="text-[10px] text-slate-400 font-semibold uppercase block">EMA 50</span>
+          <span id="ema50-val" class="font-mono font-bold text-sm text-slate-200">--</span>
+        </div>
+        <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800/60">
+          <span class="text-[10px] text-slate-400 font-semibold uppercase block">RSI (14)</span>
+          <span id="rsi-val" class="font-mono font-bold text-sm text-slate-200">--</span>
+        </div>
+        <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800/60">
+          <span class="text-[10px] text-slate-400 font-semibold uppercase block">Volumen 24h</span>
+          <span id="vol-val" class="font-mono font-bold text-sm text-slate-200">--</span>
+        </div>
+      </div>
+
+      <!-- Mini Orderbook (Libro de Órdenes) -->
       <div class="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl">
-        <h3 class="text-sm font-semibold text-indigo-400 mb-1">Estado de la Conexión</h3>
+        <h3 class="text-xs font-bold text-slate-400 mb-3 tracking-wider uppercase flex justify-between">
+          <span>Libro de Órdenes en Vivo</span>
+          <span id="ob-status" class="text-[10px] text-emerald-400 lowercase font-normal">streaming...</span>
+        </h3>
+        
+        <div class="grid grid-cols-2 gap-4 text-xs font-mono">
+          <!-- Bids / Compras -->
+          <div>
+            <div class="text-[10px] text-emerald-400 border-b border-slate-800 pb-1 mb-1 font-sans font-bold">COMPRAS (BIDS)</div>
+            <div id="bids-list" class="space-y-1 text-slate-300">
+              <div class="flex justify-between"><span class="text-slate-500">--</span><span>--</span></div>
+            </div>
+          </div>
+          
+          <!-- Asks / Ventas -->
+          <div>
+            <div class="text-[10px] text-rose-400 border-b border-slate-800 pb-1 mb-1 font-sans font-bold">VENTAS (ASKS)</div>
+            <div id="asks-list" class="space-y-1 text-slate-300">
+              <div class="flex justify-between"><span class="text-slate-500">--</span><span>--</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estado de Conexión -->
+      <div class="bg-slate-900/40 border border-slate-800 p-4 rounded-2xl">
         <p id="search-status" class="text-xs text-slate-400 leading-relaxed">
-          Escribe cualquier par arriba. El sistema consulta automáticamente Futuros, Spot y DEXs sin congelarse.
+          Mercado sincronizado correctamente.
         </p>
       </div>
+
     </div>
 
   </main>
@@ -91,7 +137,8 @@
     let socketDepth = null;
     let debounceTimer = null;
     let currentRatio = 1;
-    let currentSymbol = '';
+    let rsiValue = 50;
+    let isEmaBullish = false;
 
     function setDirection(dir) {
       currentDirection = dir;
@@ -106,7 +153,7 @@
       updateEngineUI();
     }
 
-    function closeExistingSockets() {
+    function closeSockets() {
       if (socketPrice) { socketPrice.close(); socketPrice = null; }
       if (socketDepth) { socketDepth.close(); socketDepth = null; }
     }
@@ -122,7 +169,7 @@
       }
 
       debounceTimer = setTimeout(async () => {
-        box.innerHTML = '<div class="p-3 text-xs text-slate-500">Buscando en CEX y DEX...</div>';
+        box.innerHTML = '<div class="p-3 text-xs text-slate-500">Buscando...</div>';
         box.classList.remove('hidden');
 
         try {
@@ -153,84 +200,105 @@
               name: `${p.baseToken.symbol}/${p.quoteToken.symbol}`, 
               type: `DEX (${p.chainId.toUpperCase()})`, 
               price: p.priceUsd,
+              volume: p.volume?.h24 || 0,
               source: 'DEX' 
             }));
           }
 
           if (results.length === 0) {
-            box.innerHTML = '<div class="p-3 text-xs text-slate-500">Sin resultados.</div>';
+            box.innerHTML = '<div class="p-3 text-xs text-slate-500">Sin coincidencias.</div>';
             return;
           }
 
           box.innerHTML = results.map(r => `
-            <div onclick="selectResult('${r.name}', '${r.source}', '${r.price || ''}')" class="p-2.5 hover:bg-slate-800 cursor-pointer flex justify-between items-center text-xs border-b border-slate-800/50">
+            <div onclick="selectResult('${r.name}', '${r.source}', '${r.price || ''}', '${r.volume || ''}')" class="p-2.5 hover:bg-slate-800 cursor-pointer flex justify-between items-center text-xs border-b border-slate-800/50">
               <span class="font-mono font-bold text-white">${r.name}</span>
               <span class="text-[10px] font-semibold ${r.source.includes('BINANCE') ? 'text-indigo-400' : 'text-cyan-400'}">${r.type}</span>
             </div>
           `).join('');
 
         } catch (e) {
-          box.innerHTML = '<div class="p-3 text-xs text-rose-400">Error consultando APIs.</div>';
+          box.innerHTML = '<div class="p-3 text-xs text-rose-400">Error en búsqueda.</div>';
         }
       }, 250);
     }
 
-    async function selectResult(name, source, price) {
+    async function selectResult(name, source, price, volume) {
       document.getElementById('suggestions-box').classList.add('hidden');
       document.getElementById('ticker-input').value = name;
-      closeExistingSockets();
+      closeSockets();
 
       if (source === 'BINANCE_FUTURES') {
         await loadBinanceData(name, true);
       } else if (source === 'BINANCE_SPOT') {
         await loadBinanceData(name, false);
       } else {
+        // Modo DEX
         document.getElementById('asset-tag').textContent = `${name} @ $${parseFloat(price).toFixed(6)}`;
         document.getElementById('source-display').textContent = 'DEXScreener';
-        document.getElementById('search-status').textContent = `Conectado a par DEX para ${name}.`;
+        document.getElementById('vol-val').textContent = `$${(parseFloat(volume)/1000).toFixed(1)}k`;
+        document.getElementById('ema20-val').textContent = 'N/A';
+        document.getElementById('ema50-val').textContent = 'N/A';
+        document.getElementById('rsi-val').textContent = 'N/A';
+        document.getElementById('bids-list').innerHTML = '<div class="text-slate-500">No disp. en DEX</div>';
+        document.getElementById('asks-list').innerHTML = '<div class="text-slate-500">No disp. en DEX</div>';
         currentRatio = 1;
         updateEngineUI();
       }
     }
 
-    // Carga mixta: REST inmediato para desbloquear UI + WebSocket para updates
     async function loadBinanceData(symbol, isFutures) {
-      currentSymbol = symbol;
       const marketName = isFutures ? 'FUTUROS' : 'SPOT';
       document.getElementById('source-display').textContent = `Binance ${marketName}`;
       document.getElementById('search-status').textContent = `Conectando a Binance ${marketName} (${symbol})...`;
 
-      // 1. Carga REST Inmediata (Evita que la pantalla se quede congelada)
-      try {
-        const restPriceUrl = isFutures 
-          ? `https://fapi.binance.com/fapi/v1/ticker/price?symbol=${symbol}` 
-          : `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`;
-        
-        const restDepthUrl = isFutures 
-          ? `https://fapi.binance.com/fapi/v1/depth?symbol=${symbol}&limit=20` 
-          : `https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=20`;
+      const restBase = isFutures ? 'https://fapi.binance.com' : 'https://api.binance.com';
 
-        const [pRes, dRes] = await Promise.all([
-          fetch(restPriceUrl).then(r => r.json()),
-          fetch(restDepthUrl).then(r => r.json())
+      // 1. Obtener K-Lines (Velas 15m) para calcular EMA y RSI
+      try {
+        const [klines, depth, ticker24h] = await Promise.all([
+          fetch(`${restBase}/${isFutures ? 'fapi/v1' : 'api/v3'}/klines?symbol=${symbol}&interval=15m&limit=60`).then(r => r.json()),
+          fetch(`${restBase}/${isFutures ? 'fapi/v1' : 'api/v3'}/depth?symbol=${symbol}&limit=10`).then(r => r.json()),
+          fetch(`${restBase}/${isFutures ? 'fapi/v1' : 'api/v3'}/ticker/24hr?symbol=${symbol}`).then(r => r.json())
         ]);
 
-        if (pRes.price) {
-          document.getElementById('asset-tag').textContent = `${symbol} @ $${parseFloat(pRes.price).toFixed(6)}`;
+        if (Array.isArray(klines)) {
+          const closes = klines.map(k => parseFloat(k[4]));
+          const currentPrice = closes[closes.length - 1];
+
+          const ema20 = calculateEMA(closes, 20);
+          const ema50 = calculateEMA(closes, 50);
+          rsiValue = calculateRSI(closes, 14);
+
+          isEmaBullish = ema20 > ema50;
+
+          document.getElementById('asset-tag').textContent = `${symbol} @ $${currentPrice.toFixed(6)}`;
+          document.getElementById('ema20-val').textContent = `$${ema20.toFixed(4)}`;
+          document.getElementById('ema50-val').textContent = `$${ema50.toFixed(4)}`;
+          document.getElementById('rsi-val').textContent = rsiValue.toFixed(1);
+          
+          // Color de RSI
+          const rsiEl = document.getElementById('rsi-val');
+          rsiEl.className = rsiValue > 70 ? 'font-mono font-bold text-sm text-rose-400' : rsiValue < 30 ? 'font-mono font-bold text-sm text-emerald-400' : 'font-mono font-bold text-sm text-slate-200';
         }
 
-        if (dRes.bids && dRes.asks) {
-          calculateRatio(dRes.bids, dRes.asks);
+        if (ticker24h.quoteVolume) {
+          const volM = parseFloat(ticker24h.quoteVolume) / 1000000;
+          document.getElementById('vol-val').textContent = `$${volM.toFixed(2)}M`;
         }
+
+        if (depth.bids && depth.asks) {
+          renderOrderbook(depth.bids, depth.asks);
+        }
+
       } catch (e) {
-        console.warn("Fallo temporal en REST API, esperando WebSocket...", e);
+        console.warn("Error cargando indicadores iniciales", e);
       }
 
-      // 2. Conectar WebSockets independientes
+      // 2. WebSockets independientes
       const wsBase = isFutures ? 'wss://fstream.binance.com/ws/' : 'wss://stream.binance.com:9443/ws/';
       const lowerSymbol = symbol.toLowerCase();
 
-      // Stream de Precio (Ticker Stream)
       socketPrice = new WebSocket(`${wsBase}${lowerSymbol}@ticker`);
       socketPrice.onmessage = (e) => {
         const data = JSON.parse(e.data);
@@ -239,36 +307,93 @@
         }
       };
 
-      // Stream de Libro de Órdenes (Depth Stream)
       socketDepth = new WebSocket(`${wsBase}${lowerSymbol}@depth10@100ms`);
       socketDepth.onmessage = (e) => {
         const data = JSON.parse(e.data);
-        if (data.b && data.a) {
-          calculateRatio(data.b, data.a);
-        } else if (data.bids && data.asks) {
-          calculateRatio(data.bids, data.asks);
+        const bids = data.b || data.bids;
+        const asks = data.a || data.asks;
+        if (bids && asks) {
+          renderOrderbook(bids, asks);
         }
       };
 
-      document.getElementById('search-status').textContent = `En vivo: Recibiendo flujo de órdenes de Binance ${marketName} (${symbol}).`;
+      document.getElementById('search-status').textContent = `Streaming activo de Indicadores y Libro de Órdenes para ${symbol}.`;
     }
 
-    function calculateRatio(bids, asks) {
-      const totalBids = bids.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
-      const totalAsks = asks.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
+    // Algoritmos Técnicos
+    function calculateEMA(prices, period) {
+      const k = 2 / (period + 1);
+      let ema = prices.slice(0, period).reduce((a, b) => a + b, 0) / period;
+      for (let i = period; i < prices.length; i++) {
+        ema = (prices[i] * k) + (ema * (1 - k));
+      }
+      return ema;
+    }
+
+    function calculateRSI(prices, period = 14) {
+      let gains = 0, losses = 0;
+      for (let i = 1; i <= period; i++) {
+        const diff = prices[i] - prices[i - 1];
+        if (diff >= 0) gains += diff;
+        else losses -= diff;
+      }
+      let avgGain = gains / period;
+      let avgLoss = losses / period;
+
+      for (let i = period + 1; i < prices.length; i++) {
+        const diff = prices[i] - prices[i - 1];
+        if (diff >= 0) {
+          avgGain = (avgGain * 13 + diff) / 14;
+          avgLoss = (avgLoss * 13) / 14;
+        } else {
+          avgGain = (avgGain * 13) / 14;
+          avgLoss = (avgLoss * 13 - diff) / 14;
+        }
+      }
+      if (avgLoss === 0) return 100;
+      const rs = avgGain / avgLoss;
+      return 100 - (100 / (1 + rs));
+    }
+
+    function renderOrderbook(bids, asks) {
+      const topBids = bids.slice(0, 5);
+      const topAsks = asks.slice(0, 5);
+
+      const totalBids = topBids.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
+      const totalAsks = topAsks.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
+
       currentRatio = totalAsks > 0 ? totalBids / totalAsks : 1;
+
+      document.getElementById('bids-list').innerHTML = topBids.map(([p, q]) => `
+        <div class="flex justify-between"><span class="text-emerald-400">$${parseFloat(p).toFixed(4)}</span><span class="text-slate-400">${parseFloat(q).toFixed(1)}</span></div>
+      `).join('');
+
+      document.getElementById('asks-list').innerHTML = topAsks.map(([p, q]) => `
+        <div class="flex justify-between"><span class="text-rose-400">$${parseFloat(p).toFixed(4)}</span><span class="text-slate-400">${parseFloat(q).toFixed(1)}</span></div>
+      `).join('');
+
       updateEngineUI();
     }
 
     function updateEngineUI() {
       let score = 50;
+
+      // Ponderación por Orderbook Ratio
       if (currentDirection === 'LONG') {
-        if (currentRatio >= 1.3) score += 30;
-        else if (currentRatio < 0.8) score -= 20;
+        if (currentRatio >= 1.3) score += 20;
+        else if (currentRatio < 0.8) score -= 15;
       } else {
-        if (currentRatio <= 0.7) score += 30;
-        else if (currentRatio > 1.2) score -= 20;
+        if (currentRatio <= 0.7) score += 20;
+        else if (currentRatio > 1.2) score -= 15;
       }
+
+      // Ponderación por EMAs
+      if (currentDirection === 'LONG' && isEmaBullish) score += 15;
+      if (currentDirection === 'SHORT' && !isEmaBullish) score += 15;
+
+      // Ponderación por RSI
+      if (currentDirection === 'LONG' && rsiValue < 40) score += 15; // Sobreventa favorece LONG
+      if (currentDirection === 'SHORT' && rsiValue > 60) score += 15; // Sobrecompra favorece SHORT
 
       const finalScore = Math.min(Math.max(score, 0), 100);
       document.getElementById('score-display').textContent = finalScore;
@@ -288,7 +413,7 @@
       }
     }
 
-    // Inicialización automática con ONGUSDT en Futuros para probar
+    // Inicialización automática de prueba
     selectResult('ONGUSDT', 'BINANCE_FUTURES');
   </script>
 </body>
