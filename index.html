@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trading Decision Engine - Semáforo & Indicadores</title>
+  <title>Trading Engine - Multichain & DEXScreener</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
@@ -12,10 +12,16 @@
   <header class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 pb-6 border-b border-slate-800">
     <div>
       <h1 class="text-2xl font-bold text-white tracking-tight">Trading Decision Engine</h1>
-      <p class="text-xs text-slate-400">Sistema Semáforo, EMA20 y Análisis de Liquidez</p>
+      <p class="text-xs text-slate-400">Análisis Multichain (Binance + DEXScreener)</p>
     </div>
 
     <form id="search-form" class="flex flex-wrap gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+      <!-- Selector Proveedor -->
+      <select id="provider-type" onchange="toggleProviderUI()" class="bg-slate-800 text-xs text-slate-200 font-semibold px-2 py-1 rounded outline-none cursor-pointer">
+        <option value="BINANCE">BINANCE (CEX)</option>
+        <option value="DEXSCREENER">DEXSCREENER (MULTICHAIN)</option>
+      </select>
+
       <select id="market-type" class="bg-slate-800 text-xs text-slate-200 font-semibold px-2 py-1 rounded outline-none cursor-pointer">
         <option value="SPOT">SPOT</option>
         <option value="FUTURES">FUTUROS</option>
@@ -25,8 +31,8 @@
         type="text" 
         id="ticker-input" 
         value="SOLUSDT" 
-        placeholder="Ej. BTCUSDT..." 
-        class="bg-transparent px-3 py-1 outline-none text-sm font-mono uppercase text-white"
+        placeholder="Ej. SOLUSDT o Contrato..." 
+        class="bg-transparent px-3 py-1 outline-none text-sm font-mono text-white w-48"
       >
 
       <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2 rounded-lg font-bold transition">
@@ -47,68 +53,64 @@
             <button id="btn-short" onclick="setDirection('SHORT')" class="px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white">SHORT (VENTA)</button>
           </div>
 
-          <span id="asset-tag" class="font-mono text-white font-bold bg-slate-800 px-3 py-1 rounded-full text-xs">
+          <span id="asset-tag" class="font-mono text-white font-bold bg-slate-800 px-3 py-1 rounded-full text-xs truncate max-w-[150px]">
             SOLUSDT @ $---
           </span>
         </div>
 
-        <!-- Indicador Visual Semáforo -->
         <div class="text-center my-6">
           <div id="semaphore-light" class="w-6 h-6 rounded-full mx-auto mb-3 bg-slate-700 animate-pulse"></div>
           <span id="score-display" class="text-7xl font-extrabold font-mono text-white tracking-tight">--</span>
           <span class="text-lg text-slate-500 font-bold">/100</span>
 
           <div id="verdict-container" class="mt-4 flex items-center justify-center gap-2">
-            <span class="text-slate-400 font-bold">ESPERANDO DATOS...</span>
+            <span class="text-slate-400 font-bold">CONSULTANDO DATOS...</span>
           </div>
         </div>
       </div>
 
       <div class="space-y-2 border-t border-slate-800/80 pt-4 text-xs">
         <div class="flex justify-between">
-          <span class="text-slate-400">Order Book (Bids/Asks):</span>
+          <span class="text-slate-400">Presión Compra/Venta (24h):</span>
           <span id="ratio-display" class="font-mono font-bold text-slate-200">1.00x</span>
         </div>
         <div class="flex justify-between">
-          <span class="text-slate-400">Tendencia Corto Plazo (EMA20):</span>
-          <span id="ema-status" class="font-mono font-bold text-slate-400">Calculando...</span>
+          <span class="text-slate-400">Liquidez del Pool:</span>
+          <span id="liquidity-display" class="font-mono font-bold text-indigo-400">N/A</span>
         </div>
       </div>
     </div>
 
-    <!-- Módulos de Indicadores Técnicos -->
+    <!-- Módulos de Métricas -->
     <div class="md:col-span-7 grid grid-cols-1 gap-4">
       
-      <!-- Indicador 1: Tendencia EMA20 -->
       <div class="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl">
         <div class="flex justify-between items-start mb-2">
-          <h3 class="text-sm font-semibold text-indigo-400">1. Promedio Móvil (EMA 20)</h3>
-          <span id="ema-badge" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">NEUTRAL</span>
+          <h3 class="text-sm font-semibold text-indigo-400">1. Cambio de Precio (24h / 1h)</h3>
+          <span id="price-change-badge" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">0.00%</span>
         </div>
-        <p id="ema-explanation" class="text-xs text-slate-400 leading-relaxed">
-          Evaluando si el precio actual cotiza por encima o por debajo del promedio móvil de 20 periodos.
+        <p id="price-change-explanation" class="text-xs text-slate-400 leading-relaxed">
+          Estructura de rendimiento a corto y mediano plazo.
         </p>
       </div>
 
-      <!-- Indicador 2: Volumen de Confirmación -->
       <div class="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl">
         <div class="flex justify-between items-start mb-2">
-          <h3 class="text-sm font-semibold text-cyan-400">2. Confirmación de Volumen</h3>
-          <span id="vol-badge" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">NORMAL</span>
+          <h3 class="text-sm font-semibold text-cyan-400">2. Volumen Total</h3>
+          <span id="vol-badge" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">$0</span>
         </div>
         <p id="vol-explanation" class="text-xs text-slate-400 leading-relaxed">
-          El volumen valida la fuerza de la vela actual. Un volumen alto confirma la dirección del movimiento.
+          Volumen operado acumulado.
         </p>
       </div>
 
-      <!-- Indicador 3: Liquidez del Order Book -->
       <div class="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl">
         <div class="flex justify-between items-start mb-2">
-          <h3 class="text-sm font-semibold text-emerald-400">3. Microestructura (Libro)</h3>
-          <span id="book-badge" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">EQUILIBRADO</span>
+          <h3 class="text-sm font-semibold text-emerald-400">3. Red / DEX Origen</h3>
+          <span id="chain-badge" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">BINANCE</span>
         </div>
-        <p id="book-explanation" class="text-xs text-slate-400 leading-relaxed">
-          Mide el balance de ofertas de compra y venta inmediatas.
+        <p id="chain-explanation" class="text-xs text-slate-400 leading-relaxed">
+          Conectado directamente a la API seleccionada.
         </p>
       </div>
 
@@ -117,15 +119,28 @@
   </main>
 
   <script>
-    let currentSymbol = 'SOLUSDT';
-    let currentMarket = 'SPOT';
+    let currentProvider = 'BINANCE';
     let currentDirection = 'LONG';
     let socket = null;
+    let dexInterval = null;
 
-    // Métricas en memoria para suavizado
-    let priceHistory = [];
-    let smoothedRatio = 1;
-    let currentPrice = 0;
+    let metrics = {
+      price: 0,
+      buySellRatio: 1,
+      liquidity: 0,
+      vol24h: 0,
+      change24h: 0
+    };
+
+    function toggleProviderUI() {
+      currentProvider = document.getElementById('provider-type').value;
+      const marketSelect = document.getElementById('market-type');
+      if (currentProvider === 'DEXSCREENER') {
+        marketSelect.classList.add('hidden');
+      } else {
+        marketSelect.classList.remove('hidden');
+      }
+    }
 
     function setDirection(dir) {
       currentDirection = dir;
@@ -137,57 +152,29 @@
         ? "px-3 py-1 text-xs font-bold rounded bg-rose-500 text-white" 
         : "px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white";
 
-      updateEngine();
+      updateEngineUI();
     }
 
-    // Algoritmo de la EMA (Media Móvil Exponencial)
-    function calculateEMA(prices, period = 20) {
-      if (prices.length === 0) return 0;
-      const k = 2 / (period + 1);
-      let ema = prices[0];
-      for (let i = 1; i < prices.length; i++) {
-        ema = (prices[i] * k) + (ema * (1 - k));
-      }
-      return ema;
-    }
-
-    function updateEngine() {
-      if (priceHistory.length === 0) return;
-
-      const ema20 = calculateEMA(priceHistory, 20);
-      const isAboveEMA = currentPrice > ema20;
-
-      // Cálculo de Score con ponderación de indicadores
+    function updateEngineUI() {
       let score = 50;
 
-      // 1. Aporte del Libro de Órdenes
+      // Evaluar por Ratio de Compras/Ventas
       if (currentDirection === 'LONG') {
-        if (smoothedRatio >= 1.4) score += 25;
-        else if (smoothedRatio < 0.8) score -= 15;
+        if (metrics.buySellRatio >= 1.3) score += 25;
+        else if (metrics.buySellRatio < 0.8) score -= 20;
+        if (metrics.change24h > 0) score += 15;
       } else {
-        if (smoothedRatio <= 0.7) score += 25;
-        else if (smoothedRatio > 1.2) score -= 15;
+        if (metrics.buySellRatio <= 0.75) score += 25;
+        else if (metrics.buySellRatio > 1.2) score -= 20;
+        if (metrics.change24h < 0) score += 15;
       }
-
-      // 2. Aporte de la EMA20 (Tendencia)
-      if (currentDirection === 'LONG' && isAboveEMA) score += 25;
-      else if (currentDirection === 'SHORT' && !isAboveEMA) score += 25;
 
       const finalScore = Math.min(Math.max(score, 0), 100);
 
-      // Actualizar Interfaz y Semáforo
       document.getElementById('score-display').textContent = finalScore;
-      document.getElementById('ratio-display').textContent = smoothedRatio.toFixed(2) + 'x';
+      document.getElementById('ratio-display').textContent = metrics.buySellRatio.toFixed(2) + 'x';
+      document.getElementById('liquidity-display').textContent = metrics.liquidity ? `$${Number(metrics.liquidity).toLocaleString()}` : 'N/A';
 
-      // Actualizar Estado EMA
-      document.getElementById('ema-status').textContent = isAboveEMA ? 'Por encima (Alcista)' : 'Por debajo (Bajista)';
-      document.getElementById('ema-status').className = `font-mono font-bold ${isAboveEMA ? 'text-emerald-400' : 'text-rose-400'}`;
-      document.getElementById('ema-badge').textContent = isAboveEMA ? 'PRECIO > EMA20' : 'PRECIO < EMA20';
-      document.getElementById('ema-explanation').textContent = isAboveEMA 
-        ? 'El precio está cotizando sobre su promedio móvil de 20 periodos, lo que favorece operaciones en LONG.' 
-        : 'El precio está cotizando por debajo de su promedio móvil, favoreciendo entradas en SHORT.';
-
-      // Lógica de Colores del Semáforo
       const semLight = document.getElementById('semaphore-light');
       const semCard = document.getElementById('semaphore-card');
       const verdict = document.getElementById('verdict-container');
@@ -213,59 +200,87 @@
       }
     }
 
-    function connect(symbol, market) {
-      if (socket) socket.close();
+    // Consulta API REST DEXScreener
+    async function fetchDexScreenerData(query) {
+      try {
+        const res = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${query}`);
+        const data = await res.json();
 
+        if (!data.pairs || data.pairs.length === 0) {
+          alert('Activo no encontrado en DEXScreener.');
+          return;
+        }
+
+        const pair = data.pairs[0]; // Tomar el par con mayor liquidez
+        
+        metrics.price = parseFloat(pair.priceUsd);
+        metrics.liquidity = pair.liquidity ? pair.liquidity.usd : 0;
+        metrics.vol24h = pair.volume ? pair.volume.h24 : 0;
+        metrics.change24h = pair.priceChange ? pair.priceChange.h24 : 0;
+
+        const buys = pair.txns?.h24?.buys || 1;
+        const sells = pair.txns?.h24?.sells || 1;
+        metrics.buySellRatio = buys / sells;
+
+        document.getElementById('asset-tag').textContent = `${pair.baseToken.symbol} @ $${metrics.price}`;
+        document.getElementById('price-change-badge').textContent = `${metrics.change24h}%`;
+        document.getElementById('vol-badge').textContent = `$${Number(metrics.vol24h).toLocaleString()}`;
+        document.getElementById('chain-badge').textContent = `${pair.chainId.toUpperCase()} (${pair.dexId})`;
+        document.getElementById('chain-explanation').textContent = `Par encontrado en DEX: ${pair.baseToken.name} / ${pair.quoteToken.symbol}`;
+
+        updateEngineUI();
+      } catch (e) {
+        console.error("Error cargando datos de DEXScreener:", e);
+      }
+    }
+
+    // Conexión Binance WebSocket
+    function connectBinance(symbol, market) {
+      if (socket) socket.close();
       const formattedSymbol = symbol.toLowerCase();
       const baseUrl = market === 'FUTURES' ? 'wss://fstream.binance.com/ws/' : 'wss://stream.binance.com:9443/ws/';
       const streamUrl = `${baseUrl}${formattedSymbol}@kline_15m/${formattedSymbol}@depth10@100ms`;
 
-      priceHistory = [];
+      document.getElementById('chain-badge').textContent = market;
+      document.getElementById('chain-explanation').textContent = 'Conectado a Binance WebSocket';
+
       socket = new WebSocket(streamUrl);
 
       socket.onmessage = (event) => {
         const payload = JSON.parse(event.data);
 
-        // Suavizado del Order Book (Filtro del 20%)
         if (payload.bids && payload.asks) {
           const totalBids = payload.bids.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
           const totalAsks = payload.asks.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
-          const rawRatio = totalAsks > 0 ? totalBids / totalAsks : 1;
-
-          smoothedRatio = (smoothedRatio * 0.8) + (rawRatio * 0.2);
+          metrics.buySellRatio = totalAsks > 0 ? totalBids / totalAsks : 1;
         }
 
-        // Velas e Historial para EMA
         if (payload.k) {
-          currentPrice = parseFloat(payload.k.c);
-          const volume = parseFloat(payload.k.v).toFixed(2);
-
-          if (priceHistory.length === 0 || priceHistory[priceHistory.length - 1] !== currentPrice) {
-            priceHistory.push(currentPrice);
-            if (priceHistory.length > 50) priceHistory.shift();
-          }
-
-          document.getElementById('asset-tag').textContent = `${symbol.toUpperCase()} @ $${currentPrice.toFixed(4)}`;
-          document.getElementById('vol-explanation').textContent = `Volumen negociado en la vela actual: ${volume} unidades.`;
-          
-          updateEngine();
+          metrics.price = parseFloat(payload.k.c);
+          document.getElementById('asset-tag').textContent = `${symbol.toUpperCase()} @ $${metrics.price.toFixed(4)}`;
+          updateEngineUI();
         }
       };
     }
 
     document.getElementById('search-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const input = document.getElementById('ticker-input').value.trim().toUpperCase();
+      if (socket) socket.close();
+      if (dexInterval) clearInterval(dexInterval);
+
+      const input = document.getElementById('ticker-input').value.trim();
       const market = document.getElementById('market-type').value;
 
-      if (input) {
-        currentSymbol = input;
-        currentMarket = market;
-        connect(currentSymbol, currentMarket);
+      if (currentProvider === 'BINANCE') {
+        connectBinance(input, market);
+      } else {
+        fetchDexScreenerData(input);
+        // Polling cada 10 segundos para DEXScreener
+        dexInterval = setInterval(() => fetchDexScreenerData(input), 10000);
       }
     });
 
-    connect(currentSymbol, currentMarket);
+    connectBinance('SOLUSDT', 'SPOT');
   </script>
 </body>
 </html>
