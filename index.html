@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trading Decision Engine - Multi-Indicator Summary</title>
+  <title>Trading Decision Engine - Multi-Indicator Dynamic Direction</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
@@ -12,7 +12,7 @@
   <header class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 pb-6 border-b border-slate-800">
     <div>
       <h1 class="text-2xl font-bold text-white tracking-tight">Trading Decision Engine</h1>
-      <p class="text-xs text-slate-400">Búsqueda Unificada con Resumen de Confluencia por Indicador</p>
+      <p class="text-xs text-slate-400">Búsqueda Unificada con Confluencia Dinámica (LONG / SHORT)</p>
     </div>
 
     <!-- Buscador Universal -->
@@ -34,7 +34,7 @@
   <!-- Panel Principal -->
   <main class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 mt-6">
     
-    <!-- Semáforo y Score con Resumen Visual -->
+    <!-- Semáforo y Score -->
     <div id="semaphore-card" class="md:col-span-5 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between transition-colors duration-500">
       <div>
         <div class="flex justify-between items-center">
@@ -58,7 +58,7 @@
           </div>
         </div>
 
-        <!-- RESUMEN VISUAL DE INDICADORES (SEMAFORO DETALLADO) -->
+        <!-- RESUMEN VISUAL DE INDICADORES ADAPTADO A LA DIRECCIÓN -->
         <div class="border-t border-slate-800/80 pt-4 mt-2">
           <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-3 text-center">Desglose de Confluencia</span>
           <div class="grid grid-cols-2 gap-2 text-xs">
@@ -395,12 +395,12 @@
 
     function setBadge(id, state) {
       const el = document.getElementById(id);
-      if (state === 'COMPRA') {
+      if (state === 'FAVORABLE') {
         el.className = 'font-bold text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
-        el.textContent = 'COMPRA';
-      } else if (state === 'VENTA') {
+        el.textContent = 'FAVORABLE';
+      } else if (state === 'EN CONTRA') {
         el.className = 'font-bold text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30';
-        el.textContent = 'VENTA';
+        el.textContent = 'EN CONTRA';
       } else {
         el.className = 'font-bold text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400';
         el.textContent = 'NEUTRAL';
@@ -409,45 +409,46 @@
 
     function updateEngineUI() {
       let score = 50;
+      const isLong = currentDirection === 'LONG';
 
-      // 1. Orderbook Status
+      // 1. Orderbook (Ratio Bids/Asks)
       if (currentRatio >= 1.25) {
-        score += 15;
-        setBadge('ind-ob', 'COMPRA');
+        setBadge('ind-ob', isLong ? 'FAVORABLE' : 'EN CONTRA');
+        score += isLong ? 15 : -15;
       } else if (currentRatio <= 0.75) {
-        score -= 15;
-        setBadge('ind-ob', 'VENTA');
+        setBadge('ind-ob', isLong ? 'EN CONTRA' : 'FAVORABLE');
+        score += isLong ? -15 : 15;
       } else {
         setBadge('ind-ob', 'NEUTRAL');
       }
 
-      // 2. EMA Status
+      // 2. Tendencia EMA (20 vs 50)
       if (isEmaBullish) {
-        score += 15;
-        setBadge('ind-ema', 'COMPRA');
+        setBadge('ind-ema', isLong ? 'FAVORABLE' : 'EN CONTRA');
+        score += isLong ? 15 : -15;
       } else {
-        score -= 15;
-        setBadge('ind-ema', 'VENTA');
+        setBadge('ind-ema', isLong ? 'EN CONTRA' : 'FAVORABLE');
+        score += isLong ? -15 : 15;
       }
 
-      // 3. RSI Status
+      // 3. RSI (14)
       if (rsiValue < 35) {
-        score += 15;
-        setBadge('ind-rsi', 'COMPRA'); // Sobreventa
+        setBadge('ind-rsi', isLong ? 'FAVORABLE' : 'EN CONTRA'); // Sobreventa = genial para LONG, malo para SHORT
+        score += isLong ? 15 : -15;
       } else if (rsiValue > 65) {
-        score -= 15;
-        setBadge('ind-rsi', 'VENTA'); // Sobrecompra
+        setBadge('ind-rsi', isLong ? 'EN CONTRA' : 'FAVORABLE'); // Sobrecompra = genial para SHORT, malo para LONG
+        score += isLong ? -15 : 15;
       } else {
         setBadge('ind-rsi', 'NEUTRAL');
       }
 
-      // 4. Volumen Status (Salud de Mercado)
+      // 4. Volumen (Salud del mercado)
       if (volume24hUSD > 5000000) {
-        score += 5;
-        setBadge('ind-vol', 'COMPRA');
+        score += 5; // Otorga liquidez general
+        setBadge('ind-vol', 'FAVORABLE');
       } else if (volume24hUSD < 500000) {
         score -= 10;
-        setBadge('ind-vol', 'VENTA');
+        setBadge('ind-vol', 'EN CONTRA');
       } else {
         setBadge('ind-vol', 'NEUTRAL');
       }
@@ -460,8 +461,8 @@
       const verdictText = document.getElementById('verdict-text');
 
       if (finalScore >= 70) {
-        semLight.className = `w-6 h-6 rounded-full mx-auto mb-3 ${currentDirection === 'LONG' ? 'bg-emerald-500' : 'bg-rose-500'}`;
-        verdictText.className = currentDirection === 'LONG' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold';
+        semLight.className = `w-6 h-6 rounded-full mx-auto mb-3 ${isLong ? 'bg-emerald-500' : 'bg-rose-500'}`;
+        verdictText.className = isLong ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold';
         verdictText.textContent = `✓ ENTRADA EN ${currentDirection}`;
       } else {
         semLight.className = "w-6 h-6 rounded-full mx-auto mb-3 bg-amber-500";
