@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trading Engine - Fixed Search</title>
+  <title>Trading Engine - Búsqueda Universal</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
@@ -12,29 +12,24 @@
   <header class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 pb-6 border-b border-slate-800">
     <div>
       <h1 class="text-2xl font-bold text-white tracking-tight">Trading Decision Engine</h1>
-      <p class="text-xs text-slate-400">Motor de Búsqueda CEX (Spot/Futuros) y DEX</p>
+      <p class="text-xs text-slate-400">Búsqueda Automática Unificada (CEX Futuros, Spot & DEX)</p>
     </div>
 
+    <!-- Buscador Sin Selectores -->
     <div class="relative w-full md:w-96">
       <div class="flex bg-slate-900 p-1.5 rounded-xl border border-slate-800">
-        <select id="provider-type" onchange="clearSearch()" class="bg-slate-800 text-xs text-slate-200 font-semibold px-2 py-1 rounded outline-none cursor-pointer mr-2">
-          <option value="BINANCE_FUTURES">BINANCE FUTUROS</option>
-          <option value="BINANCE_SPOT">BINANCE SPOT</option>
-          <option value="DEXSCREENER">DEXSCREENER</option>
-        </select>
-
         <input 
           type="text" 
           id="ticker-input" 
-          oninput="handleSearchInput(this.value)"
-          placeholder="Buscar (ej. AGT, SOL, PEPE)..." 
+          oninput="handleUniversalSearch(this.value)"
+          placeholder="Escribe el activo (ej. AGT, SOL, BEAT)..." 
           class="bg-transparent px-3 py-1 outline-none text-sm font-mono text-white w-full uppercase"
           autocomplete="off"
         >
       </div>
 
-      <!-- Menú Desplegable Corregido -->
-      <div id="suggestions-box" class="hidden absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto"></div>
+      <!-- Menú Desplegable Unificado -->
+      <div id="suggestions-box" class="hidden absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto"></div>
     </div>
   </header>
 
@@ -72,7 +67,7 @@
           <span id="ratio-display" class="font-mono font-bold text-slate-200">1.00x</span>
         </div>
         <div class="flex justify-between">
-          <span class="text-slate-400">Fuente:</span>
+          <span class="text-slate-400">Fuente de Datos:</span>
           <span id="source-display" class="font-mono font-bold text-indigo-400">---</span>
         </div>
       </div>
@@ -81,9 +76,9 @@
     <!-- Módulos Informativos -->
     <div class="md:col-span-7 grid grid-cols-1 gap-4">
       <div class="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl">
-        <h3 class="text-sm font-semibold text-indigo-400 mb-1">Estado de Conexión</h3>
+        <h3 class="text-sm font-semibold text-indigo-400 mb-1">Estado de la Conexión</h3>
         <p id="search-status" class="text-xs text-slate-400 leading-relaxed">
-          Selecciona la red adecuada en el menú superior: Binance Futuros para contratos perpetuos (como AGTUSDT), Binance Spot para compra directa o DEXScreener para pares en DEX.
+          Simplemente escribe el nombre del activo arriba. El motor buscará automáticamente en Binance (Futuros y Spot) y DEXScreener en un solo paso.
         </p>
       </div>
     </div>
@@ -95,11 +90,6 @@
     let socket = null;
     let debounceTimer = null;
     let currentRatio = 1;
-
-    function clearSearch() {
-      document.getElementById('ticker-input').value = '';
-      document.getElementById('suggestions-box').classList.add('hidden');
-    }
 
     function setDirection(dir) {
       currentDirection = dir;
@@ -114,96 +104,99 @@
       updateEngineUI();
     }
 
-    function handleSearchInput(query) {
+    function handleUniversalSearch(query) {
       clearTimeout(debounceTimer);
       const box = document.getElementById('suggestions-box');
-      const provider = document.getElementById('provider-type').value;
+      const q = query.trim().toUpperCase();
 
-      if (!query || query.trim().length < 2) {
+      if (!q || q.length < 2) {
         box.classList.add('hidden');
         return;
       }
 
       debounceTimer = setTimeout(async () => {
-        box.innerHTML = '<div class="p-3 text-xs text-slate-500">Buscando coincidencia...</div>';
+        box.innerHTML = '<div class="p-3 text-xs text-slate-500">Buscando en CEX y DEX...</div>';
         box.classList.remove('hidden');
 
-        const cleanQuery = query.trim().toUpperCase();
+        try {
+          // Peticiones paralelas
+          const [futuresRes, spotRes, dexRes] = await Promise.allSettled([
+            fetch('https://fapi.binance.com/fapi/v1/exchangeInfo').then(r => r.json()),
+            fetch('https://api.binance.com/api/v3/exchangeInfo').then(r => r.json()),
+            fetch(`https://api.dexscreener.com/latest/dex/search?q=${q}`).then(r => r.json())
+          ]);
 
-        if (provider === 'BINANCE_FUTURES' || provider === 'BINANCE_SPOT') {
-          try {
-            const isFutures = provider === 'BINANCE_FUTURES';
-            const endpoint = isFutures 
-              ? 'https://fapi.binance.com/fapi/v1/exchangeInfo' 
-              : 'https://api.binance.com/api/v3/exchangeInfo';
+          let results = [];
 
-            const res = await fetch(endpoint);
-            const data = await res.json();
-            
-            const matches = data.symbols
-              .filter(s => s.symbol.includes(cleanQuery) && (isFutures ? s.status === 'TRADING' : s.status === 'TRADING'))
-              .slice(0, 6);
-
-            if (matches.length === 0) {
-              box.innerHTML = `<div class="p-3 text-xs text-slate-500">No encontrado en ${isFutures ? 'Futuros' : 'Spot'}. Prueba cambiando de pestaña.</div>`;
-              return;
-            }
-
-            box.innerHTML = matches.map(m => `
-              <div onclick="connectBinance('${m.symbol}', '${isFutures ? 'FUTURES' : 'SPOT'}')" class="p-2.5 hover:bg-slate-800 cursor-pointer flex justify-between items-center text-xs border-b border-slate-800/50">
-                <span class="font-mono font-bold text-white">${m.symbol}</span>
-                <span class="text-[10px] text-indigo-400 font-semibold">${isFutures ? 'PERPETUAL' : 'SPOT'}</span>
-              </div>
-            `).join('');
-
-          } catch (e) {
-            box.innerHTML = '<div class="p-3 text-xs text-rose-400">Error al consultar Binance.</div>';
+          // 1. Binance Futuros
+          if (futuresRes.status === 'fulfilled' && futuresRes.value.symbols) {
+            const matches = futuresRes.value.symbols
+              .filter(s => s.symbol.includes(q) && s.status === 'TRADING')
+              .slice(0, 3);
+            matches.forEach(m => results.push({ name: m.symbol, type: 'FUTUROS', source: 'BINANCE_FUTURES' }));
           }
-        } else {
-          // DEXScreener
-          try {
-            const res = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${cleanQuery}`);
-            const data = await res.json();
 
-            if (!data.pairs || data.pairs.length === 0) {
-              box.innerHTML = '<div class="p-3 text-xs text-slate-500">No encontrado en DEXScreener.</div>';
-              return;
-            }
-
-            const matches = data.pairs.slice(0, 6);
-            box.innerHTML = matches.map(p => `
-              <div onclick="selectDexPair('${p.baseToken.symbol}', '${p.priceUsd}', '${p.chainId}')" class="p-2.5 hover:bg-slate-800 cursor-pointer flex justify-between items-center text-xs border-b border-slate-800/50">
-                <div>
-                  <span class="font-mono font-bold text-cyan-400">${p.baseToken.symbol}/${p.quoteToken.symbol}</span>
-                  <span class="text-[10px] text-slate-500 block">${p.chainId.toUpperCase()} (${p.dexId})</span>
-                </div>
-                <span class="font-mono text-slate-200">$${parseFloat(p.priceUsd).toFixed(6)}</span>
-              </div>
-            `).join('');
-          } catch (e) {
-            box.innerHTML = '<div class="p-3 text-xs text-rose-400">Error de conexión con DEXScreener.</div>';
+          // 2. Binance Spot
+          if (spotRes.status === 'fulfilled' && spotRes.value.symbols) {
+            const matches = spotRes.value.symbols
+              .filter(s => s.symbol.includes(q) && s.status === 'TRADING')
+              .slice(0, 3);
+            matches.forEach(m => results.push({ name: m.symbol, type: 'SPOT', source: 'BINANCE_SPOT' }));
           }
+
+          // 3. DEXScreener
+          if (dexRes.status === 'fulfilled' && dexRes.value.pairs) {
+            const matches = dexRes.value.pairs.slice(0, 3);
+            matches.forEach(p => results.push({ 
+              name: `${p.baseToken.symbol}/${p.quoteToken.symbol}`, 
+              type: `DEX (${p.chainId.toUpperCase()})`, 
+              price: p.priceUsd,
+              source: 'DEX' 
+            }));
+          }
+
+          if (results.length === 0) {
+            box.innerHTML = '<div class="p-3 text-xs text-slate-500">Sin resultados en ninguna red.</div>';
+            return;
+          }
+
+          box.innerHTML = results.map(r => `
+            <div onclick="selectResult('${r.name}', '${r.source}', '${r.price || ''}')" class="p-2.5 hover:bg-slate-800 cursor-pointer flex justify-between items-center text-xs border-b border-slate-800/50">
+              <span class="font-mono font-bold text-white">${r.name}</span>
+              <span class="text-[10px] font-semibold ${r.source.includes('BINANCE') ? 'text-indigo-400' : 'text-cyan-400'}">${r.type}</span>
+            </div>
+          `).join('');
+
+        } catch (e) {
+          box.innerHTML = '<div class="p-3 text-xs text-rose-400">Error consultando datos.</div>';
         }
       }, 300);
     }
 
-    function selectDexPair(symbol, price, chain) {
+    function selectResult(name, source, price) {
       document.getElementById('suggestions-box').classList.add('hidden');
-      document.getElementById('asset-tag').textContent = `${symbol} @ $${price}`;
-      document.getElementById('source-display').textContent = `DEXScreener (${chain.toUpperCase()})`;
-      document.getElementById('search-status').textContent = `Datos cargados para ${symbol} en la red ${chain}.`;
+      document.getElementById('ticker-input').value = name;
+
+      if (source === 'BINANCE_FUTURES') {
+        connectBinance(name, 'FUTURES');
+      } else if (source === 'BINANCE_SPOT') {
+        connectBinance(name, 'SPOT');
+      } else {
+        if (socket) socket.close();
+        document.getElementById('asset-tag').textContent = `${name} @ $${parseFloat(price).toFixed(6)}`;
+        document.getElementById('source-display').textContent = 'DEXScreener';
+        document.getElementById('search-status').textContent = `Conectado a par DEX para ${name}.`;
+      }
     }
 
     function connectBinance(symbol, market) {
       if (socket) socket.close();
-      document.getElementById('suggestions-box').classList.add('hidden');
-
       const formattedSymbol = symbol.toLowerCase();
       const baseUrl = market === 'FUTURES' ? 'wss://fstream.binance.com/ws/' : 'wss://stream.binance.com:9443/ws/';
       const streamUrl = `${baseUrl}${formattedSymbol}@kline_15m/${formattedSymbol}@depth10@100ms`;
 
-      document.getElementById('source-display').textContent = `Binance (${market})`;
-      document.getElementById('search-status').textContent = `Conectado al WebStream de Binance (${market}) para ${symbol}.`;
+      document.getElementById('source-display').textContent = `Binance ${market}`;
+      document.getElementById('search-status').textContent = `WebSocket conectado a Binance ${market} (${symbol}).`;
 
       socket = new WebSocket(streamUrl);
 
@@ -218,7 +211,7 @@
 
         if (payload.k) {
           const price = parseFloat(payload.k.c).toFixed(6);
-          document.getElementById('asset-tag').textContent = `${symbol.toUpperCase()} @ $${price}`;
+          document.getElementById('asset-tag').textContent = `${symbol} @ $${price}`;
           updateEngineUI();
         }
       };
