@@ -22,7 +22,7 @@
           type="text" 
           id="ticker-input" 
           oninput="handleUniversalSearch(this.value)"
-          placeholder="Escribe el activo (ej. ONG, AGT, SOL)..." 
+          placeholder="Escribe el activo (ej. BTC, SOL, ETH)..." 
           class="bg-transparent px-3 py-1 outline-none text-sm font-mono text-white w-full uppercase"
           autocomplete="off"
         >
@@ -411,49 +411,55 @@
       let score = 50;
       const isLong = currentDirection === 'LONG';
 
-      // 1. Orderbook (Ratio Bids/Asks)
-      if (currentRatio >= 1.25) {
-        setBadge('ind-ob', isLong ? 'FAVORABLE' : 'EN CONTRA');
+      // 1. Tendencia EMA (20 vs 50) - Mayor penalización al ir contratendencia
+      if (isEmaBullish) {
+        score += isLong ? 20 : -25;
+        setBadge('ind-ema', isLong ? 'FAVORABLE' : 'EN CONTRA');
+      } else {
+        score += isLong ? -25 : 20;
+        setBadge('ind-ema', isLong ? 'EN CONTRA' : 'FAVORABLE');
+      }
+
+      // 2. RSI (14) - Zonas extremas y gradiente
+      if (rsiValue < 30) {
+        score += isLong ? 20 : -20;
+        setBadge('ind-rsi', isLong ? 'FAVORABLE' : 'EN CONTRA');
+      } else if (rsiValue > 70) {
+        score += isLong ? -20 : 20;
+        setBadge('ind-rsi', isLong ? 'EN CONTRA' : 'FAVORABLE');
+      } else if (rsiValue >= 45 && rsiValue <= 55) {
+        score += 0;
+        setBadge('ind-rsi', 'NEUTRAL');
+      } else {
+        const rsiBias = (rsiValue - 50) / 2;
+        score += isLong ? -rsiBias : rsiBias;
+        setBadge('ind-rsi', (isLong && rsiValue < 50) || (!isLong && rsiValue > 50) ? 'FAVORABLE' : 'EN CONTRA');
+      }
+
+      // 3. Orderbook (Ratio Bids/Asks)
+      if (currentRatio >= 1.3) {
         score += isLong ? 15 : -15;
-      } else if (currentRatio <= 0.75) {
-        setBadge('ind-ob', isLong ? 'EN CONTRA' : 'FAVORABLE');
+        setBadge('ind-ob', isLong ? 'FAVORABLE' : 'EN CONTRA');
+      } else if (currentRatio <= 0.7) {
         score += isLong ? -15 : 15;
+        setBadge('ind-ob', isLong ? 'EN CONTRA' : 'FAVORABLE');
       } else {
         setBadge('ind-ob', 'NEUTRAL');
       }
 
-      // 2. Tendencia EMA (20 vs 50)
-      if (isEmaBullish) {
-        setBadge('ind-ema', isLong ? 'FAVORABLE' : 'EN CONTRA');
-        score += isLong ? 15 : -15;
-      } else {
-        setBadge('ind-ema', isLong ? 'EN CONTRA' : 'FAVORABLE');
-        score += isLong ? -15 : 15;
-      }
-
-      // 3. RSI (14)
-      if (rsiValue < 35) {
-        setBadge('ind-rsi', isLong ? 'FAVORABLE' : 'EN CONTRA'); // Sobreventa = genial para LONG, malo para SHORT
-        score += isLong ? 15 : -15;
-      } else if (rsiValue > 65) {
-        setBadge('ind-rsi', isLong ? 'EN CONTRA' : 'FAVORABLE'); // Sobrecompra = genial para SHORT, malo para LONG
-        score += isLong ? -15 : 15;
-      } else {
-        setBadge('ind-rsi', 'NEUTRAL');
-      }
-
-      // 4. Volumen (Salud del mercado)
+      // 4. Volumen (Validador de confluencia)
       if (volume24hUSD > 5000000) {
-        score += 5; // Otorga liquidez general
+        score += 5;
         setBadge('ind-vol', 'FAVORABLE');
       } else if (volume24hUSD < 500000) {
-        score -= 10;
+        score -= 15;
         setBadge('ind-vol', 'EN CONTRA');
       } else {
         setBadge('ind-vol', 'NEUTRAL');
       }
 
-      const finalScore = Math.min(Math.max(score, 0), 100);
+      const finalScore = Math.min(Math.max(Math.round(score), 0), 100);
+      
       document.getElementById('score-display').textContent = finalScore;
       document.getElementById('ratio-display').textContent = currentRatio.toFixed(2) + 'x';
 
@@ -472,7 +478,7 @@
     }
 
     // Carga inicial
-    selectResult('ONGUSDT', 'BINANCE_FUTURES');
+    selectResult('BTCUSDT', 'BINANCE_FUTURES');
   </script>
 </body>
 </html>
