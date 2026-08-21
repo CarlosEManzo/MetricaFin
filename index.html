@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trading Confluence & Learning Hub</title>
+  <title>Trading Decision Engine - Long & Short</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
@@ -12,10 +12,16 @@
   <header class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 pb-6 border-b border-slate-800">
     <div>
       <h1 class="text-2xl font-bold text-white tracking-tight">Trading Decision Engine</h1>
-      <p class="text-xs text-slate-400">Análisis de liquidez, volumen y guía educativa en vivo</p>
+      <p class="text-xs text-slate-400">Análisis bidireccional (Long / Short) y multimercado</p>
     </div>
 
-    <form id="search-form" class="flex gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+    <form id="search-form" class="flex flex-wrap gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+      <!-- Selector Mercado Spot / Futuros -->
+      <select id="market-type" class="bg-slate-800 text-xs text-slate-200 font-semibold px-2 py-1 rounded outline-none cursor-pointer">
+        <option value="SPOT">SPOT</option>
+        <option value="FUTURES">FUTUROS</option>
+      </select>
+
       <input 
         type="text" 
         id="ticker-input" 
@@ -23,8 +29,9 @@
         placeholder="Ej. BTCUSDT..." 
         class="bg-transparent px-3 py-1 outline-none text-sm font-mono uppercase text-white"
       >
+
       <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2 rounded-lg font-bold transition">
-        Analizar Ticker
+        Analizar
       </button>
     </form>
   </header>
@@ -36,7 +43,12 @@
     <div class="md:col-span-5 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
       <div>
         <div class="flex justify-between items-center">
-          <span class="text-xs font-semibold text-slate-400">CERTEZA OPERATIVA</span>
+          <!-- Selector Dirección de la Orden -->
+          <div class="flex gap-1 bg-slate-800 p-1 rounded-lg">
+            <button id="btn-long" onclick="setDirection('LONG')" class="px-3 py-1 text-xs font-bold rounded bg-emerald-500 text-slate-950">LONG (COMPRA)</button>
+            <button id="btn-short" onclick="setDirection('SHORT')" class="px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white">SHORT (VENTA)</button>
+          </div>
+
           <span id="asset-tag" class="font-mono text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full text-xs">
             SOLUSDT @ $---
           </span>
@@ -54,115 +66,137 @@
 
       <div class="space-y-2 border-t border-slate-800 pt-4 text-xs">
         <div class="flex justify-between">
-          <span class="text-slate-400">Presión de Compra (Order Book):</span>
+          <span class="text-slate-400">Ratio de Presión (Bids/Asks):</span>
           <span id="ratio-display" class="font-mono font-bold text-slate-200">1.00x</span>
         </div>
         <div class="flex justify-between">
-          <span class="text-slate-400">Fuerza de Vela (Volumen):</span>
+          <span class="text-slate-400">Volumen en Vela Actual:</span>
           <span id="volume-display" class="font-mono font-bold text-indigo-400">Normal</span>
         </div>
       </div>
     </div>
 
-    <!-- Guía Educativa e Indicadores -->
+    <!-- Módulos Informativos -->
     <div class="md:col-span-7 grid grid-cols-1 gap-4">
-      
-      <!-- Indicador 1: Libro de Órdenes -->
       <div class="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl">
         <div class="flex justify-between items-start mb-2">
-          <h3 class="text-sm font-semibold text-cyan-400">1. Libro de Órdenes (Microestructura)</h3>
+          <h3 class="text-sm font-semibold text-cyan-400">Diagnóstico para <span id="direction-label">LONG</span></h3>
           <span id="book-badge" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">NEUTRAL</span>
         </div>
         <p id="book-explanation" class="text-xs text-slate-400 leading-relaxed">
-          Cargando datos del libro... El libro mide la intención inmediata de los compradores frente a los vendedores.
+          Cargando liquidez...
         </p>
       </div>
 
-      <!-- Indicador 2: Volumen -->
       <div class="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl">
         <div class="flex justify-between items-start mb-2">
-          <h3 class="text-sm font-semibold text-indigo-400">2. Volumen de Negociación</h3>
-          <span id="vol-badge" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">ESPERANDO</span>
+          <h3 class="text-sm font-semibold text-emerald-400">Conexión de Mercado</h3>
+          <span id="market-badge" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">SPOT</span>
         </div>
-        <p id="vol-explanation" class="text-xs text-slate-400 leading-relaxed">
-          El volumen confirma si las instituciones están respaldando el movimiento del precio actual.
+        <p id="network-status" class="text-xs text-slate-400 leading-relaxed">
+          Conectado directamente a Binance WebSocket.
         </p>
       </div>
-
-      <!-- Indicador 3: Estructura de Tendencia -->
-      <div class="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl">
-        <div class="flex justify-between items-start mb-2">
-          <h3 class="text-sm font-semibold text-emerald-400">3. Estructura y Regla de Oro</h3>
-          <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-mono">CONFLUENCIA</span>
-        </div>
-        <p class="text-xs text-slate-400 leading-relaxed">
-          <strong>Regla:</strong> Nunca operes solo porque el Score sea alto. Busca que la dirección coincide con la tendencia principal del gráfico de velas antes de confirmar tu entrada.
-        </p>
-      </div>
-
     </div>
 
   </main>
 
   <script>
     let currentSymbol = 'SOLUSDT';
+    let currentMarket = 'SPOT';
+    let currentDirection = 'LONG'; // 'LONG' o 'SHORT'
     let socket = null;
+    let lastRatio = 1;
 
-    function connect(symbol) {
+    function setDirection(dir) {
+      currentDirection = dir;
+      const btnLong = document.getElementById('btn-long');
+      const btnShort = document.getElementById('btn-short');
+
+      if (dir === 'LONG') {
+        btnLong.className = "px-3 py-1 text-xs font-bold rounded bg-emerald-500 text-slate-950";
+        btnShort.className = "px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white";
+        document.getElementById('direction-label').textContent = 'LONG (COMPRA)';
+      } else {
+        btnShort.className = "px-3 py-1 text-xs font-bold rounded bg-rose-500 text-white";
+        btnLong.className = "px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white";
+        document.getElementById('direction-label').textContent = 'SHORT (VENTA)';
+      }
+
+      updateScoreUI();
+    }
+
+    function updateScoreUI() {
+      let score = 50;
+      let explanation = "";
+      let badge = "NEUTRAL";
+
+      if (currentDirection === 'LONG') {
+        // Para LONG favorecemos mayor ratio de Bids (Compras)
+        if (lastRatio >= 1.5) {
+          score += 35;
+          badge = "SOPORTE FUERTE";
+          explanation = "Muro comprador protegiendo la zona de entrada. Alta probabilidad para LONG.";
+        } else if (lastRatio < 0.8) {
+          score -= 25;
+          badge = "PRESION VENDEDORA";
+          explanation = "Poco respaldo comprador y fuerte oferta en las ventas. Riesgo elevado para entrar en Long.";
+        }
+      } else {
+        // Para SHORT favorecemos menor ratio (dominio de Asks / Ventas)
+        if (lastRatio <= 0.65) {
+          score += 35;
+          badge = "RESISTENCIA FUERTE";
+          explanation = "Muro vendedor presionando el precio a la baja. Alta probabilidad para operar en SHORT.";
+        } else if (lastRatio > 1.3) {
+          score -= 25;
+          badge = "COMPRAS DEFENDIENDO";
+          explanation = "Hay demasiada demanda compradora abajo. Riesgo elevado para entrar en Short.";
+        }
+      }
+
+      const finalScore = Math.min(Math.max(score, 0), 100);
+      document.getElementById('score-display').textContent = finalScore;
+      document.getElementById('book-badge').textContent = badge;
+      document.getElementById('book-explanation').textContent = explanation || "Mercado en rango o con liquidez equilibrada.";
+
+      const verdict = document.getElementById('verdict-container');
+      if (finalScore >= 70) {
+        verdict.innerHTML = `<span class="${currentDirection === 'LONG' ? 'text-emerald-400' : 'text-rose-400'} font-bold">✓ ALTA PROBABILIDAD (${currentDirection})</span>`;
+      } else {
+        verdict.innerHTML = `<span class="text-amber-400 font-bold">⚠ RIESGO ELEVADO / ESPERAR</span>`;
+      }
+    }
+
+    function connect(symbol, market) {
       if (socket) socket.close();
 
       const formattedSymbol = symbol.toLowerCase();
-      const streamUrl = `wss://stream.binance.com:9443/ws/${formattedSymbol}@kline_15m/${formattedSymbol}@depth10@100ms`;
+      // Conexión dinámica según si es SPOT o FUTUROS
+      const baseUrl = market === 'FUTURES' ? 'wss://fstream.binance.com/ws/' : 'wss://stream.binance.com:9443/ws/';
+      const streamUrl = `${baseUrl}${formattedSymbol}@kline_15m/${formattedSymbol}@depth10@100ms`;
+
+      document.getElementById('market-badge').textContent = market;
 
       socket = new WebSocket(streamUrl);
 
       socket.onmessage = (event) => {
         const payload = JSON.parse(event.data);
 
-        // Process Order Book
         if (payload.bids && payload.asks) {
           const totalBids = payload.bids.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
           const totalAsks = payload.asks.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
-          const ratio = totalAsks > 0 ? totalBids / totalAsks : 1;
+          lastRatio = totalAsks > 0 ? totalBids / totalAsks : 1;
 
-          let score = 50;
-          let bookExplanation = "";
-          let bookBadge = "NEUTRAL";
-
-          if (ratio >= 1.5) {
-            score += 35;
-            bookBadge = "DOMINIO COMPRADOR";
-            bookExplanation = `Hay un ${((ratio - 1) * 100).toFixed(0)}% más de liquidez en órdenes de compra que de venta. Se está formando un muro defensivo de Bids.`;
-          } else if (ratio < 0.8) {
-            score -= 20;
-            bookBadge = "DOMINIO VENDEDOR";
-            bookExplanation = "Existe mayor presión de venta (Asks) arriba del precio. El mercado enfrenta resistencia para subir.";
-          } else {
-            bookExplanation = "La oferta y la demanda están equilibradas en los primeros niveles del libro de órdenes.";
-          }
-
-          document.getElementById('score-display').textContent = Math.min(Math.max(score, 0), 100);
-          document.getElementById('ratio-display').textContent = ratio.toFixed(2) + 'x';
-          document.getElementById('book-badge').textContent = bookBadge;
-          document.getElementById('book-explanation').textContent = bookExplanation;
-
-          const verdictContainer = document.getElementById('verdict-container');
-          if (score >= 70) {
-            verdictContainer.innerHTML = '<span class="text-emerald-400 font-bold">✓ ALTA PROBABILIDAD (COMPRA)</span>';
-          } else {
-            verdictContainer.innerHTML = '<span class="text-amber-400 font-bold">⚠ RIESGO ELEVADO / ESPERAR</span>';
-          }
+          document.getElementById('ratio-display').textContent = lastRatio.toFixed(2) + 'x';
+          updateScoreUI();
         }
 
-        // Process Kline (Candle) Volume & Price
         if (payload.k) {
           const price = parseFloat(payload.k.c).toFixed(4);
           const volume = parseFloat(payload.k.v).toFixed(2);
-          
           document.getElementById('asset-tag').textContent = `${symbol.toUpperCase()} @ $${price}`;
           document.getElementById('volume-display').textContent = `${volume} Vol`;
-          document.getElementById('vol-badge').textContent = "EN TIEMPO REAL";
-          document.getElementById('vol-explanation').textContent = `Volumen de la vela actual de 15m: ${volume} unidades. Un incremento de volumen durante la ruptura de un soporte o resistencia confirma el movimiento.`;
         }
       };
     }
@@ -170,13 +204,16 @@
     document.getElementById('search-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const input = document.getElementById('ticker-input').value.trim().toUpperCase();
+      const market = document.getElementById('market-type').value;
+
       if (input) {
         currentSymbol = input;
-        connect(currentSymbol);
+        currentMarket = market;
+        connect(currentSymbol, currentMarket);
       }
     });
 
-    connect(currentSymbol);
+    connect(currentSymbol, currentMarket);
   </script>
 </body>
 </html>
