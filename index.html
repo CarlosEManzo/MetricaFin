@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trading Decision Engine - Long & Short</title>
+  <title>Trading Decision Engine - Semáforo & Indicadores</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
@@ -12,11 +12,10 @@
   <header class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 pb-6 border-b border-slate-800">
     <div>
       <h1 class="text-2xl font-bold text-white tracking-tight">Trading Decision Engine</h1>
-      <p class="text-xs text-slate-400">Análisis bidireccional (Long / Short) y multimercado</p>
+      <p class="text-xs text-slate-400">Sistema Semáforo, EMA20 y Análisis de Liquidez</p>
     </div>
 
     <form id="search-form" class="flex flex-wrap gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
-      <!-- Selector Mercado Spot / Futuros -->
       <select id="market-type" class="bg-slate-800 text-xs text-slate-200 font-semibold px-2 py-1 rounded outline-none cursor-pointer">
         <option value="SPOT">SPOT</option>
         <option value="FUTURES">FUTUROS</option>
@@ -39,64 +38,80 @@
   <!-- Panel Principal -->
   <main class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 mt-6">
     
-    <!-- Score de Certeza -->
-    <div class="md:col-span-5 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+    <!-- Semáforo y Score Principal -->
+    <div id="semaphore-card" class="md:col-span-5 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between transition-colors duration-500">
       <div>
         <div class="flex justify-between items-center">
-          <!-- Selector Dirección de la Orden -->
-          <div class="flex gap-1 bg-slate-800 p-1 rounded-lg">
+          <div class="flex gap-1 bg-slate-950/60 p-1 rounded-lg border border-slate-800">
             <button id="btn-long" onclick="setDirection('LONG')" class="px-3 py-1 text-xs font-bold rounded bg-emerald-500 text-slate-950">LONG (COMPRA)</button>
             <button id="btn-short" onclick="setDirection('SHORT')" class="px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white">SHORT (VENTA)</button>
           </div>
 
-          <span id="asset-tag" class="font-mono text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full text-xs">
+          <span id="asset-tag" class="font-mono text-white font-bold bg-slate-800 px-3 py-1 rounded-full text-xs">
             SOLUSDT @ $---
           </span>
         </div>
 
+        <!-- Indicador Visual Semáforo -->
         <div class="text-center my-6">
-          <span id="score-display" class="text-7xl font-extrabold font-mono text-white tracking-tight">50</span>
+          <div id="semaphore-light" class="w-6 h-6 rounded-full mx-auto mb-3 bg-slate-700 animate-pulse"></div>
+          <span id="score-display" class="text-7xl font-extrabold font-mono text-white tracking-tight">--</span>
           <span class="text-lg text-slate-500 font-bold">/100</span>
 
           <div id="verdict-container" class="mt-4 flex items-center justify-center gap-2">
-            <span class="text-amber-400 font-bold">CONECTANDO...</span>
+            <span class="text-slate-400 font-bold">ESPERANDO DATOS...</span>
           </div>
         </div>
       </div>
 
-      <div class="space-y-2 border-t border-slate-800 pt-4 text-xs">
+      <div class="space-y-2 border-t border-slate-800/80 pt-4 text-xs">
         <div class="flex justify-between">
-          <span class="text-slate-400">Ratio de Presión (Bids/Asks):</span>
+          <span class="text-slate-400">Order Book (Bids/Asks):</span>
           <span id="ratio-display" class="font-mono font-bold text-slate-200">1.00x</span>
         </div>
         <div class="flex justify-between">
-          <span class="text-slate-400">Volumen en Vela Actual:</span>
-          <span id="volume-display" class="font-mono font-bold text-indigo-400">Normal</span>
+          <span class="text-slate-400">Tendencia Corto Plazo (EMA20):</span>
+          <span id="ema-status" class="font-mono font-bold text-slate-400">Calculando...</span>
         </div>
       </div>
     </div>
 
-    <!-- Módulos Informativos -->
+    <!-- Módulos de Indicadores Técnicos -->
     <div class="md:col-span-7 grid grid-cols-1 gap-4">
+      
+      <!-- Indicador 1: Tendencia EMA20 -->
       <div class="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl">
         <div class="flex justify-between items-start mb-2">
-          <h3 class="text-sm font-semibold text-cyan-400">Diagnóstico para <span id="direction-label">LONG</span></h3>
-          <span id="book-badge" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">NEUTRAL</span>
+          <h3 class="text-sm font-semibold text-indigo-400">1. Promedio Móvil (EMA 20)</h3>
+          <span id="ema-badge" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">NEUTRAL</span>
         </div>
-        <p id="book-explanation" class="text-xs text-slate-400 leading-relaxed">
-          Cargando liquidez...
+        <p id="ema-explanation" class="text-xs text-slate-400 leading-relaxed">
+          Evaluando si el precio actual cotiza por encima o por debajo del promedio móvil de 20 periodos.
         </p>
       </div>
 
+      <!-- Indicador 2: Volumen de Confirmación -->
       <div class="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl">
         <div class="flex justify-between items-start mb-2">
-          <h3 class="text-sm font-semibold text-emerald-400">Conexión de Mercado</h3>
-          <span id="market-badge" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">SPOT</span>
+          <h3 class="text-sm font-semibold text-cyan-400">2. Confirmación de Volumen</h3>
+          <span id="vol-badge" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">NORMAL</span>
         </div>
-        <p id="network-status" class="text-xs text-slate-400 leading-relaxed">
-          Conectado directamente a Binance WebSocket.
+        <p id="vol-explanation" class="text-xs text-slate-400 leading-relaxed">
+          El volumen valida la fuerza de la vela actual. Un volumen alto confirma la dirección del movimiento.
         </p>
       </div>
+
+      <!-- Indicador 3: Liquidez del Order Book -->
+      <div class="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl">
+        <div class="flex justify-between items-start mb-2">
+          <h3 class="text-sm font-semibold text-emerald-400">3. Microestructura (Libro)</h3>
+          <span id="book-badge" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">EQUILIBRADO</span>
+        </div>
+        <p id="book-explanation" class="text-xs text-slate-400 leading-relaxed">
+          Mide el balance de ofertas de compra y venta inmediatas.
+        </p>
+      </div>
+
     </div>
 
   </main>
@@ -104,67 +119,97 @@
   <script>
     let currentSymbol = 'SOLUSDT';
     let currentMarket = 'SPOT';
-    let currentDirection = 'LONG'; // 'LONG' o 'SHORT'
+    let currentDirection = 'LONG';
     let socket = null;
-    let lastRatio = 1;
+
+    // Métricas en memoria para suavizado
+    let priceHistory = [];
+    let smoothedRatio = 1;
+    let currentPrice = 0;
 
     function setDirection(dir) {
       currentDirection = dir;
-      const btnLong = document.getElementById('btn-long');
-      const btnShort = document.getElementById('btn-short');
+      document.getElementById('btn-long').className = dir === 'LONG' 
+        ? "px-3 py-1 text-xs font-bold rounded bg-emerald-500 text-slate-950" 
+        : "px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white";
+      
+      document.getElementById('btn-short').className = dir === 'SHORT' 
+        ? "px-3 py-1 text-xs font-bold rounded bg-rose-500 text-white" 
+        : "px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white";
 
-      if (dir === 'LONG') {
-        btnLong.className = "px-3 py-1 text-xs font-bold rounded bg-emerald-500 text-slate-950";
-        btnShort.className = "px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white";
-        document.getElementById('direction-label').textContent = 'LONG (COMPRA)';
-      } else {
-        btnShort.className = "px-3 py-1 text-xs font-bold rounded bg-rose-500 text-white";
-        btnLong.className = "px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white";
-        document.getElementById('direction-label').textContent = 'SHORT (VENTA)';
-      }
-
-      updateScoreUI();
+      updateEngine();
     }
 
-    function updateScoreUI() {
-      let score = 50;
-      let explanation = "";
-      let badge = "NEUTRAL";
+    // Algoritmo de la EMA (Media Móvil Exponencial)
+    function calculateEMA(prices, period = 20) {
+      if (prices.length === 0) return 0;
+      const k = 2 / (period + 1);
+      let ema = prices[0];
+      for (let i = 1; i < prices.length; i++) {
+        ema = (prices[i] * k) + (ema * (1 - k));
+      }
+      return ema;
+    }
 
+    function updateEngine() {
+      if (priceHistory.length === 0) return;
+
+      const ema20 = calculateEMA(priceHistory, 20);
+      const isAboveEMA = currentPrice > ema20;
+
+      // Cálculo de Score con ponderación de indicadores
+      let score = 50;
+
+      // 1. Aporte del Libro de Órdenes
       if (currentDirection === 'LONG') {
-        // Para LONG favorecemos mayor ratio de Bids (Compras)
-        if (lastRatio >= 1.5) {
-          score += 35;
-          badge = "SOPORTE FUERTE";
-          explanation = "Muro comprador protegiendo la zona de entrada. Alta probabilidad para LONG.";
-        } else if (lastRatio < 0.8) {
-          score -= 25;
-          badge = "PRESION VENDEDORA";
-          explanation = "Poco respaldo comprador y fuerte oferta en las ventas. Riesgo elevado para entrar en Long.";
-        }
+        if (smoothedRatio >= 1.4) score += 25;
+        else if (smoothedRatio < 0.8) score -= 15;
       } else {
-        // Para SHORT favorecemos menor ratio (dominio de Asks / Ventas)
-        if (lastRatio <= 0.65) {
-          score += 35;
-          badge = "RESISTENCIA FUERTE";
-          explanation = "Muro vendedor presionando el precio a la baja. Alta probabilidad para operar en SHORT.";
-        } else if (lastRatio > 1.3) {
-          score -= 25;
-          badge = "COMPRAS DEFENDIENDO";
-          explanation = "Hay demasiada demanda compradora abajo. Riesgo elevado para entrar en Short.";
-        }
+        if (smoothedRatio <= 0.7) score += 25;
+        else if (smoothedRatio > 1.2) score -= 15;
       }
 
-      const finalScore = Math.min(Math.max(score, 0), 100);
-      document.getElementById('score-display').textContent = finalScore;
-      document.getElementById('book-badge').textContent = badge;
-      document.getElementById('book-explanation').textContent = explanation || "Mercado en rango o con liquidez equilibrada.";
+      // 2. Aporte de la EMA20 (Tendencia)
+      if (currentDirection === 'LONG' && isAboveEMA) score += 25;
+      else if (currentDirection === 'SHORT' && !isAboveEMA) score += 25;
 
+      const finalScore = Math.min(Math.max(score, 0), 100);
+
+      // Actualizar Interfaz y Semáforo
+      document.getElementById('score-display').textContent = finalScore;
+      document.getElementById('ratio-display').textContent = smoothedRatio.toFixed(2) + 'x';
+
+      // Actualizar Estado EMA
+      document.getElementById('ema-status').textContent = isAboveEMA ? 'Por encima (Alcista)' : 'Por debajo (Bajista)';
+      document.getElementById('ema-status').className = `font-mono font-bold ${isAboveEMA ? 'text-emerald-400' : 'text-rose-400'}`;
+      document.getElementById('ema-badge').textContent = isAboveEMA ? 'PRECIO > EMA20' : 'PRECIO < EMA20';
+      document.getElementById('ema-explanation').textContent = isAboveEMA 
+        ? 'El precio está cotizando sobre su promedio móvil de 20 periodos, lo que favorece operaciones en LONG.' 
+        : 'El precio está cotizando por debajo de su promedio móvil, favoreciendo entradas en SHORT.';
+
+      // Lógica de Colores del Semáforo
+      const semLight = document.getElementById('semaphore-light');
+      const semCard = document.getElementById('semaphore-card');
       const verdict = document.getElementById('verdict-container');
+
       if (finalScore >= 70) {
-        verdict.innerHTML = `<span class="${currentDirection === 'LONG' ? 'text-emerald-400' : 'text-rose-400'} font-bold">✓ ALTA PROBABILIDAD (${currentDirection})</span>`;
+        if (currentDirection === 'LONG') {
+          semLight.className = "w-6 h-6 rounded-full mx-auto mb-3 bg-emerald-500 shadow-lg shadow-emerald-500/50";
+          semCard.className = "md:col-span-5 bg-emerald-950/30 border border-emerald-500/30 rounded-2xl p-6 flex flex-col justify-between transition-colors duration-500";
+          verdict.innerHTML = '<span class="text-emerald-400 font-bold">✓ SEMÁFORO VERDE: COMPRAR (LONG)</span>';
+        } else {
+          semLight.className = "w-6 h-6 rounded-full mx-auto mb-3 bg-rose-500 shadow-lg shadow-rose-500/50";
+          semCard.className = "md:col-span-5 bg-rose-950/30 border border-rose-500/30 rounded-2xl p-6 flex flex-col justify-between transition-colors duration-500";
+          verdict.innerHTML = '<span class="text-rose-400 font-bold">✓ SEMÁFORO ROJO: VENDER (SHORT)</span>';
+        }
+      } else if (finalScore >= 50) {
+        semLight.className = "w-6 h-6 rounded-full mx-auto mb-3 bg-amber-500 shadow-lg shadow-amber-500/50";
+        semCard.className = "md:col-span-5 bg-amber-950/20 border border-amber-500/20 rounded-2xl p-6 flex flex-col justify-between transition-colors duration-500";
+        verdict.innerHTML = '<span class="text-amber-400 font-bold">⚠ SEMÁFORO AMARILLO: PRECAUCIÓN</span>';
       } else {
-        verdict.innerHTML = `<span class="text-amber-400 font-bold">⚠ RIESGO ELEVADO / ESPERAR</span>`;
+        semLight.className = "w-6 h-6 rounded-full mx-auto mb-3 bg-slate-600";
+        semCard.className = "md:col-span-5 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between transition-colors duration-500";
+        verdict.innerHTML = '<span class="text-slate-400 font-bold">✕ SIN CONFLUENCIA / ESPERAR</span>';
       }
     }
 
@@ -172,31 +217,38 @@
       if (socket) socket.close();
 
       const formattedSymbol = symbol.toLowerCase();
-      // Conexión dinámica según si es SPOT o FUTUROS
       const baseUrl = market === 'FUTURES' ? 'wss://fstream.binance.com/ws/' : 'wss://stream.binance.com:9443/ws/';
       const streamUrl = `${baseUrl}${formattedSymbol}@kline_15m/${formattedSymbol}@depth10@100ms`;
 
-      document.getElementById('market-badge').textContent = market;
-
+      priceHistory = [];
       socket = new WebSocket(streamUrl);
 
       socket.onmessage = (event) => {
         const payload = JSON.parse(event.data);
 
+        // Suavizado del Order Book (Filtro del 20%)
         if (payload.bids && payload.asks) {
           const totalBids = payload.bids.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
           const totalAsks = payload.asks.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
-          lastRatio = totalAsks > 0 ? totalBids / totalAsks : 1;
+          const rawRatio = totalAsks > 0 ? totalBids / totalAsks : 1;
 
-          document.getElementById('ratio-display').textContent = lastRatio.toFixed(2) + 'x';
-          updateScoreUI();
+          smoothedRatio = (smoothedRatio * 0.8) + (rawRatio * 0.2);
         }
 
+        // Velas e Historial para EMA
         if (payload.k) {
-          const price = parseFloat(payload.k.c).toFixed(4);
+          currentPrice = parseFloat(payload.k.c);
           const volume = parseFloat(payload.k.v).toFixed(2);
-          document.getElementById('asset-tag').textContent = `${symbol.toUpperCase()} @ $${price}`;
-          document.getElementById('volume-display').textContent = `${volume} Vol`;
+
+          if (priceHistory.length === 0 || priceHistory[priceHistory.length - 1] !== currentPrice) {
+            priceHistory.push(currentPrice);
+            if (priceHistory.length > 50) priceHistory.shift();
+          }
+
+          document.getElementById('asset-tag').textContent = `${symbol.toUpperCase()} @ $${currentPrice.toFixed(4)}`;
+          document.getElementById('vol-explanation').textContent = `Volumen negociado en la vela actual: ${volume} unidades.`;
+          
+          updateEngine();
         }
       };
     }
