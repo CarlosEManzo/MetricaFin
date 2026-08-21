@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trading Engine - Búsqueda Universal</title>
+  <title>Trading Engine - Anti-Freeze Edition</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
@@ -15,20 +15,20 @@
       <p class="text-xs text-slate-400">Búsqueda Automática Unificada (CEX Futuros, Spot & DEX)</p>
     </div>
 
-    <!-- Buscador Sin Selectores -->
+    <!-- Buscador Universal -->
     <div class="relative w-full md:w-96">
       <div class="flex bg-slate-900 p-1.5 rounded-xl border border-slate-800">
         <input 
           type="text" 
           id="ticker-input" 
           oninput="handleUniversalSearch(this.value)"
-          placeholder="Escribe el activo (ej. AGT, SOL, BEAT)..." 
+          placeholder="Escribe el activo (ej. ONG, AGT, SOL)..." 
           class="bg-transparent px-3 py-1 outline-none text-sm font-mono text-white w-full uppercase"
           autocomplete="off"
         >
       </div>
 
-      <!-- Menú Desplegable Unificado -->
+      <!-- Menú Desplegable -->
       <div id="suggestions-box" class="hidden absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto"></div>
     </div>
   </header>
@@ -46,17 +46,17 @@
           </div>
 
           <span id="asset-tag" class="font-mono text-white font-bold bg-slate-800 px-3 py-1 rounded-full text-xs">
-            SELECCIONA ACTIVO
+            CARGANDO...
           </span>
         </div>
 
         <div class="text-center my-6">
-          <div id="semaphore-light" class="w-6 h-6 rounded-full mx-auto mb-3 bg-slate-700 animate-pulse"></div>
-          <span id="score-display" class="text-7xl font-extrabold font-mono text-white tracking-tight">--</span>
+          <div id="semaphore-light" class="w-6 h-6 rounded-full mx-auto mb-3 bg-amber-500 animate-pulse"></div>
+          <span id="score-display" class="text-7xl font-extrabold font-mono text-white tracking-tight">50</span>
           <span class="text-lg text-slate-500 font-bold">/100</span>
 
           <div id="verdict-container" class="mt-4 flex items-center justify-center gap-2">
-            <span class="text-slate-400 font-bold">ESPERANDO SELECCIÓN...</span>
+            <span id="verdict-text" class="text-amber-400 font-bold">ANALIZANDO MERCADO...</span>
           </div>
         </div>
       </div>
@@ -68,7 +68,7 @@
         </div>
         <div class="flex justify-between">
           <span class="text-slate-400">Fuente de Datos:</span>
-          <span id="source-display" class="font-mono font-bold text-indigo-400">---</span>
+          <span id="source-display" class="font-mono font-bold text-indigo-400">BINANCE</span>
         </div>
       </div>
     </div>
@@ -78,7 +78,7 @@
       <div class="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl">
         <h3 class="text-sm font-semibold text-indigo-400 mb-1">Estado de la Conexión</h3>
         <p id="search-status" class="text-xs text-slate-400 leading-relaxed">
-          Simplemente escribe el nombre del activo arriba. El motor buscará automáticamente en Binance (Futuros y Spot) y DEXScreener en un solo paso.
+          Escribe cualquier par arriba. El sistema consulta automáticamente Futuros, Spot y DEXs sin congelarse.
         </p>
       </div>
     </div>
@@ -87,9 +87,11 @@
 
   <script>
     let currentDirection = 'LONG';
-    let socket = null;
+    let socketPrice = null;
+    let socketDepth = null;
     let debounceTimer = null;
     let currentRatio = 1;
+    let currentSymbol = '';
 
     function setDirection(dir) {
       currentDirection = dir;
@@ -102,6 +104,11 @@
         : "px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white";
 
       updateEngineUI();
+    }
+
+    function closeExistingSockets() {
+      if (socketPrice) { socketPrice.close(); socketPrice = null; }
+      if (socketDepth) { socketDepth.close(); socketDepth = null; }
     }
 
     function handleUniversalSearch(query) {
@@ -119,7 +126,6 @@
         box.classList.remove('hidden');
 
         try {
-          // Peticiones paralelas
           const [futuresRes, spotRes, dexRes] = await Promise.allSettled([
             fetch('https://fapi.binance.com/fapi/v1/exchangeInfo').then(r => r.json()),
             fetch('https://api.binance.com/api/v3/exchangeInfo').then(r => r.json()),
@@ -128,26 +134,22 @@
 
           let results = [];
 
-          // 1. Binance Futuros
           if (futuresRes.status === 'fulfilled' && futuresRes.value.symbols) {
-            const matches = futuresRes.value.symbols
+            futuresRes.value.symbols
               .filter(s => s.symbol.includes(q) && s.status === 'TRADING')
-              .slice(0, 3);
-            matches.forEach(m => results.push({ name: m.symbol, type: 'FUTUROS', source: 'BINANCE_FUTURES' }));
+              .slice(0, 3)
+              .forEach(m => results.push({ name: m.symbol, type: 'FUTUROS', source: 'BINANCE_FUTURES' }));
           }
 
-          // 2. Binance Spot
           if (spotRes.status === 'fulfilled' && spotRes.value.symbols) {
-            const matches = spotRes.value.symbols
+            spotRes.value.symbols
               .filter(s => s.symbol.includes(q) && s.status === 'TRADING')
-              .slice(0, 3);
-            matches.forEach(m => results.push({ name: m.symbol, type: 'SPOT', source: 'BINANCE_SPOT' }));
+              .slice(0, 3)
+              .forEach(m => results.push({ name: m.symbol, type: 'SPOT', source: 'BINANCE_SPOT' }));
           }
 
-          // 3. DEXScreener
           if (dexRes.status === 'fulfilled' && dexRes.value.pairs) {
-            const matches = dexRes.value.pairs.slice(0, 3);
-            matches.forEach(p => results.push({ 
+            dexRes.value.pairs.slice(0, 3).forEach(p => results.push({ 
               name: `${p.baseToken.symbol}/${p.quoteToken.symbol}`, 
               type: `DEX (${p.chainId.toUpperCase()})`, 
               price: p.priceUsd,
@@ -156,7 +158,7 @@
           }
 
           if (results.length === 0) {
-            box.innerHTML = '<div class="p-3 text-xs text-slate-500">Sin resultados en ninguna red.</div>';
+            box.innerHTML = '<div class="p-3 text-xs text-slate-500">Sin resultados.</div>';
             return;
           }
 
@@ -168,53 +170,94 @@
           `).join('');
 
         } catch (e) {
-          box.innerHTML = '<div class="p-3 text-xs text-rose-400">Error consultando datos.</div>';
+          box.innerHTML = '<div class="p-3 text-xs text-rose-400">Error consultando APIs.</div>';
         }
-      }, 300);
+      }, 250);
     }
 
-    function selectResult(name, source, price) {
+    async function selectResult(name, source, price) {
       document.getElementById('suggestions-box').classList.add('hidden');
       document.getElementById('ticker-input').value = name;
+      closeExistingSockets();
 
       if (source === 'BINANCE_FUTURES') {
-        connectBinance(name, 'FUTURES');
+        await loadBinanceData(name, true);
       } else if (source === 'BINANCE_SPOT') {
-        connectBinance(name, 'SPOT');
+        await loadBinanceData(name, false);
       } else {
-        if (socket) socket.close();
         document.getElementById('asset-tag').textContent = `${name} @ $${parseFloat(price).toFixed(6)}`;
         document.getElementById('source-display').textContent = 'DEXScreener';
         document.getElementById('search-status').textContent = `Conectado a par DEX para ${name}.`;
+        currentRatio = 1;
+        updateEngineUI();
       }
     }
 
-    function connectBinance(symbol, market) {
-      if (socket) socket.close();
-      const formattedSymbol = symbol.toLowerCase();
-      const baseUrl = market === 'FUTURES' ? 'wss://fstream.binance.com/ws/' : 'wss://stream.binance.com:9443/ws/';
-      const streamUrl = `${baseUrl}${formattedSymbol}@kline_15m/${formattedSymbol}@depth10@100ms`;
+    // Carga mixta: REST inmediato para desbloquear UI + WebSocket para updates
+    async function loadBinanceData(symbol, isFutures) {
+      currentSymbol = symbol;
+      const marketName = isFutures ? 'FUTUROS' : 'SPOT';
+      document.getElementById('source-display').textContent = `Binance ${marketName}`;
+      document.getElementById('search-status').textContent = `Conectando a Binance ${marketName} (${symbol})...`;
 
-      document.getElementById('source-display').textContent = `Binance ${market}`;
-      document.getElementById('search-status').textContent = `WebSocket conectado a Binance ${market} (${symbol}).`;
+      // 1. Carga REST Inmediata (Evita que la pantalla se quede congelada)
+      try {
+        const restPriceUrl = isFutures 
+          ? `https://fapi.binance.com/fapi/v1/ticker/price?symbol=${symbol}` 
+          : `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`;
+        
+        const restDepthUrl = isFutures 
+          ? `https://fapi.binance.com/fapi/v1/depth?symbol=${symbol}&limit=20` 
+          : `https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=20`;
 
-      socket = new WebSocket(streamUrl);
+        const [pRes, dRes] = await Promise.all([
+          fetch(restPriceUrl).then(r => r.json()),
+          fetch(restDepthUrl).then(r => r.json())
+        ]);
 
-      socket.onmessage = (event) => {
-        const payload = JSON.parse(event.data);
-
-        if (payload.bids && payload.asks) {
-          const totalBids = payload.bids.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
-          const totalAsks = payload.asks.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
-          currentRatio = totalAsks > 0 ? totalBids / totalAsks : 1;
+        if (pRes.price) {
+          document.getElementById('asset-tag').textContent = `${symbol} @ $${parseFloat(pRes.price).toFixed(6)}`;
         }
 
-        if (payload.k) {
-          const price = parseFloat(payload.k.c).toFixed(6);
-          document.getElementById('asset-tag').textContent = `${symbol} @ $${price}`;
-          updateEngineUI();
+        if (dRes.bids && dRes.asks) {
+          calculateRatio(dRes.bids, dRes.asks);
+        }
+      } catch (e) {
+        console.warn("Fallo temporal en REST API, esperando WebSocket...", e);
+      }
+
+      // 2. Conectar WebSockets independientes
+      const wsBase = isFutures ? 'wss://fstream.binance.com/ws/' : 'wss://stream.binance.com:9443/ws/';
+      const lowerSymbol = symbol.toLowerCase();
+
+      // Stream de Precio (Ticker Stream)
+      socketPrice = new WebSocket(`${wsBase}${lowerSymbol}@ticker`);
+      socketPrice.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.c) {
+          document.getElementById('asset-tag').textContent = `${symbol} @ $${parseFloat(data.c).toFixed(6)}`;
         }
       };
+
+      // Stream de Libro de Órdenes (Depth Stream)
+      socketDepth = new WebSocket(`${wsBase}${lowerSymbol}@depth10@100ms`);
+      socketDepth.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.b && data.a) {
+          calculateRatio(data.b, data.a);
+        } else if (data.bids && data.asks) {
+          calculateRatio(data.bids, data.asks);
+        }
+      };
+
+      document.getElementById('search-status').textContent = `En vivo: Recibiendo flujo de órdenes de Binance ${marketName} (${symbol}).`;
+    }
+
+    function calculateRatio(bids, asks) {
+      const totalBids = bids.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
+      const totalAsks = asks.reduce((acc, [p, q]) => acc + (parseFloat(p) * parseFloat(q)), 0);
+      currentRatio = totalAsks > 0 ? totalBids / totalAsks : 1;
+      updateEngineUI();
     }
 
     function updateEngineUI() {
@@ -232,16 +275,21 @@
       document.getElementById('ratio-display').textContent = currentRatio.toFixed(2) + 'x';
 
       const semLight = document.getElementById('semaphore-light');
-      const verdict = document.getElementById('verdict-container');
+      const verdictText = document.getElementById('verdict-text');
 
       if (finalScore >= 70) {
         semLight.className = `w-6 h-6 rounded-full mx-auto mb-3 ${currentDirection === 'LONG' ? 'bg-emerald-500' : 'bg-rose-500'}`;
-        verdict.innerHTML = `<span class="${currentDirection === 'LONG' ? 'text-emerald-400' : 'text-rose-400'} font-bold">✓ ENTRADA EN ${currentDirection}</span>`;
+        verdictText.className = currentDirection === 'LONG' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold';
+        verdictText.textContent = `✓ ENTRADA EN ${currentDirection}`;
       } else {
         semLight.className = "w-6 h-6 rounded-full mx-auto mb-3 bg-amber-500";
-        verdict.innerHTML = '<span class="text-amber-400 font-bold">⚠ SIN CONFLUENCIA / ESPERAR</span>';
+        verdictText.className = "text-amber-400 font-bold";
+        verdictText.textContent = '⚠ SIN CONFLUENCIA / ESPERAR';
       }
     }
+
+    // Inicialización automática con ONGUSDT en Futuros para probar
+    selectResult('ONGUSDT', 'BINANCE_FUTURES');
   </script>
 </body>
 </html>
